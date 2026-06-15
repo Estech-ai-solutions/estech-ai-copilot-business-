@@ -1,17 +1,18 @@
 # Estech AI Business Copilot
 
-AI-powered business operating system for small businesses, freelancers, and entrepreneurs.
+AI-powered business platform for small businesses, freelancers, and entrepreneurs.
 
 ## Features
 
-- **AI Assistant** - Ask business questions, generate responses, create documents
-- **Customer Response Studio** - Turn customer messages into professional replies
-- **Document Generator** - Create quotes, invoices, proposals, reports, and contracts
-- **Content Studio** - Generate social media posts, product descriptions, email campaigns
-- **Knowledge Base** - Store your business data for smarter AI responses
-- **Task Manager** - Track business tasks and priorities
-- **Business Profile** - Configure your business context for AI
-- **Usage Tracking** - Monitor AI usage and costs
+**Communication Studio** - Generate professional customer replies in seconds. Download and send instantly.
+
+**Document Studio** - Create quotes, invoices, proposals, contracts, and reports. Every document is formatted for clients and ready to download.
+
+**Business Brain** - Store your pricing, services, FAQs, and policies. The AI references this automatically for accurate responses.
+
+**Task Manager** - Convert AI suggestions into actionable tasks with deadlines.
+
+**Control Center** - Monitor usage, manage your knowledge, and generate content from one dashboard.
 
 ## Tech Stack
 
@@ -20,7 +21,7 @@ AI-powered business operating system for small businesses, freelancers, and entr
 - TypeScript
 - Tailwind CSS
 - JWT Authentication
-- JSON file-based database (SQLite-ready for production)
+- JSON file-based database (SQLite-ready)
 
 ## Setup
 
@@ -29,40 +30,29 @@ npm install
 npm run dev
 ```
 
-Copy `.env.example` to `.env.local` and configure:
+## Environment Variables
 
-```
+```bash
 MISTRAL_API_KEY=your-key
-MISTRAL_API_URL=https://api.mistral.ai/v1/models/mistral-small/complete
+MISTRAL_API_URL=https://api.mistral.ai/v1/chat/completions
 JWT_SECRET=your-secret
+NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-key
 ```
-
-## MVP Modules (Completed)
-
-1. ✅ Authentication (login/register)
-2. ✅ Dashboard
-3. ✅ Business Profile
-4. ✅ Knowledge Base
-5. ✅ AI Assistant
-6. ✅ Customer Response Studio
-7. ✅ Document Generator
-8. ✅ Content Studio
-9. ✅ Task Manager
-10. ✅ Usage Tracking
 
 ## Routes
 
 - `/` - Landing page
-- `/dashboard` - Business dashboard
+- `/dashboard` - Control Center
 - `/login` - Sign in
 - `/register` - Create account
-- `/assistant` - AI assistant
-- `/responses` - Customer response studio
-- `/documents` - Document generator
-- `/content` - Content studio
-- `/knowledge` - Knowledge base
-- `/tasks` - Task manager
-- `/profile` - Business profile editor
+- `/assistant` - AI Copilot
+- `/responses` - Communication Studio
+- `/documents` - Document Studio
+- `/content` - Content Generator
+- `/knowledge` - Business Brain
+- `/tasks` - Task Manager
+- `/profile` - Business Profile
 
 ## API Endpoints
 
