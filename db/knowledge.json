@@ -1,0 +1,16 @@
+[
+  {
+    "title": "CLI entry",
+    "type": "faq",
+    "content": "content",
+    "created_at": "2026-06-11T16:30:23.664Z"
+  },
+  {
+    "id": 1781456238918,
+    "business_profile_id": null,
+    "type": "general",
+    "title": "test",
+    "content": "we make basic sites for 200 dollars",
+    "created_at": "2026-06-14T16:57:18.918Z"
+  }
+]

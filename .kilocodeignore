@@ -1,0 +1,5 @@
+node_modules/
+.next/
+.sixth/
+dev-server.log
+package-lock.json

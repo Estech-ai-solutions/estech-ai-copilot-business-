@@ -1,0 +1,44 @@
+[
+  {
+    "id": 1781464544333,
+    "business_profile_id": 1781464446018,
+    "feature": "assistant",
+    "tokens_used": 613,
+    "created_at": "2026-06-14T19:15:44.333Z"
+  },
+  {
+    "id": 1781464578072,
+    "business_profile_id": 1781464446018,
+    "feature": "assistant",
+    "tokens_used": 354,
+    "created_at": "2026-06-14T19:16:18.072Z"
+  },
+  {
+    "id": 1781464758636,
+    "business_profile_id": 1781464446018,
+    "feature": "assistant",
+    "tokens_used": 469,
+    "created_at": "2026-06-14T19:19:18.636Z"
+  },
+  {
+    "id": 1781516510013,
+    "business_profile_id": 1781464446018,
+    "feature": "assistant",
+    "tokens_used": 660,
+    "created_at": "2026-06-15T09:41:50.013Z"
+  },
+  {
+    "id": 1781526621996,
+    "business_profile_id": 1781464446018,
+    "feature": "assistant",
+    "tokens_used": 520,
+    "created_at": "2026-06-15T12:30:21.996Z"
+  },
+  {
+    "id": 1781528464794,
+    "business_profile_id": 1781464446018,
+    "feature": "assistant",
+    "tokens_used": 478,
+    "created_at": "2026-06-15T13:01:04.794Z"
+  }
+]
