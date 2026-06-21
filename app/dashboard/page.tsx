@@ -7,6 +7,9 @@ import SiteNav from '@/components/site-nav';
 type Counts = { knowledgeEntries: number; tasks: number; documents: number };
 type Profile = { id: number; name: string; description?: string; created_at?: string };
 type Usage = { totalTokens: number; totalRequests: number };
+type Document = { id: number; title: string; type: string; created_at: string };
+type Task = { id: number; title: string; status: string; priority: string; created_at: string };
+type KnowledgeEntry = { id: number; title: string; created_at: string };
 
 function getTimeOfDay(): string {
   const hour = new Date().getHours();
@@ -19,6 +22,9 @@ export default function DashboardPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [counts, setCounts] = useState<Counts | null>(null);
   const [usage, setUsage] = useState<Usage | null>(null);
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [knowledge, setKnowledge] = useState<KnowledgeEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -33,15 +39,27 @@ export default function DashboardPage() {
 
     Promise.all([
       fetch('/api/profile', { headers }).then((r) => r.json()),
-      fetch('/api/usage', { headers }).then((r) => r.json())
+      fetch('/api/usage', { headers }).then((r) => r.json()),
+      fetch('/api/documents', { headers }).then((r) => r.json()),
+      fetch('/api/tasks', { headers }).then((r) => r.json()),
+      fetch('/api/knowledge', { headers }).then((r) => r.json())
     ])
-      .then(([profileData, usageData]) => {
+      .then(([profileData, usageData, docData, taskData, knowledgeData]) => {
         if (profileData.profile) {
           setProfile(profileData.profile);
           setCounts(profileData.counts);
         }
         if (usageData.usage) {
           setUsage(usageData.usage);
+        }
+        if (docData.documents) {
+          setDocuments(docData.documents.slice(-3).reverse());
+        }
+        if (taskData.tasks) {
+          setTasks(taskData.tasks.slice(-3).reverse());
+        }
+        if (knowledgeData.entries) {
+          setKnowledge(knowledgeData.entries.slice(-3).reverse());
         }
       })
       .catch((err) => {
@@ -52,7 +70,6 @@ export default function DashboardPage() {
   }, []);
 
   const timeOfDay = getTimeOfDay();
-  const businessName = profile?.name || 'Your Business';
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
@@ -71,7 +88,7 @@ export default function DashboardPage() {
             Today your AI workforce has:
           </p>
           
-          <div className="mt-4 flex flex-wrap gap-6 text-sm">
+          <div className="mt-4 flex flex-wrap gap-x-8 gap-y-2 text-sm">
             <span className="text-slate-300">• Documents generated: {counts?.documents ?? 0}</span>
             <span className="text-slate-300">• Customer conversations: {usage?.totalRequests ?? 0}</span>
             <span className="text-slate-300">• Knowledge available: {counts?.knowledgeEntries ?? 0}</span>
@@ -113,34 +130,55 @@ export default function DashboardPage() {
 
         {/* Main Workspace */}
         <div className="mt-12 grid gap-8 lg:grid-cols-3">
-          {/* Action Tiles */}
-          <div className="lg:col-span-2">
-            <h2 className="text-lg font-semibold text-white">Workspaces</h2>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <WorkspaceTile
-                href="/responses"
-                icon="💬"
-                title="Communication Studio"
-                description="Generate professional customer replies with your business context"
-              />
-              <WorkspaceTile
-                href="/documents"
-                icon="📄"
-                title="Document Studio"
-                description="Create quotes, invoices, proposals clients can download"
-              />
-              <WorkspaceTile
-                href="/knowledge"
-                icon="🧠"
-                title="Business Brain"
-                description="Store pricing, services, policies for accurate AI responses"
-              />
-              <WorkspaceTile
-                href="/tasks"
-                icon="✅"
-                title="Task Manager"
-                description="Track work and convert AI suggestions to action items"
-              />
+          {/* Action Tiles & Activity */}
+          <div className="lg:col-span-2 space-y-8">
+            <div>
+              <h2 className="text-lg font-semibold text-white">Workspaces</h2>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <WorkspaceTile
+                  href="/responses"
+                  icon="💬"
+                  title="Communication Studio"
+                  description="Generate professional customer replies with your business context"
+                />
+                <WorkspaceTile
+                  href="/documents"
+                  icon="📄"
+                  title="Document Studio"
+                  description="Create quotes, invoices, proposals clients can download"
+                />
+                <WorkspaceTile
+                  href="/knowledge"
+                  icon="🧠"
+                  title="Business Brain"
+                  description="Store pricing, services, policies for accurate AI responses"
+                />
+                <WorkspaceTile
+                  href="/tasks"
+                  icon="✅"
+                  title="Task Manager"
+                  description="Track work and convert AI suggestions to action items"
+                />
+              </div>
+            </div>
+
+            {/* Recent Activity */}
+            <div>
+              <h2 className="text-lg font-semibold text-white">Recent Activity</h2>
+              <div className="mt-4 space-y-2">
+                {documents.map((doc) => (
+                  <ActivityRow key={`doc-${doc.id}`} icon="📄" label={doc.title} time={doc.created_at} />
+                ))}
+                {tasks.map((task) => (
+                  <ActivityRow key={`task-${task.id}`} icon="✅" label={task.title} time={task.created_at} />
+                ))}
+                {knowledge.map((entry) => (
+                  <ActivityRow key={`knowledge-${entry.id}`} icon="🧠" label={entry.title} time={entry.created_at} />
+                ))}
+                {documents.length === 0 && tasks.length === 0 && knowledge.length === 0 && (
+                  <p className="py-4 text-sm text-slate-400">No recent activity. Start by adding knowledge or generating a document.</p>
+                )}
+              </div>
             </div>
           </div>
 
@@ -168,7 +206,7 @@ export default function DashboardPage() {
                 {counts?.tasks && counts.tasks > 0 && (
                   <p className="text-slate-300">You have {counts.tasks} tasks to manage today.</p>
                 )}
-                {counts?.documents > 0 && (
+                {(counts?.documents ?? 0) > 0 && (
                   <p className="text-slate-300">Your documents library is growing. Keep creating.</p>
                 )}
               </div>
@@ -225,6 +263,18 @@ function StatusRow({ label, status }: { label: string; status: string }) {
       <span className={`text-xs ${isOnline ? 'text-emerald-400' : 'text-sky-400'}`}>
         {isOnline ? '✓ Ready' : status}
       </span>
+    </div>
+  );
+}
+
+function ActivityRow({ icon, label, time }: { icon: string; label: string; time: string }) {
+  const date = new Date(time);
+  const formatted = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return (
+    <div className="flex items-center gap-3 rounded-lg px-2 py-2 transition hover:bg-slate-900/60">
+      <span className="text-base">{icon}</span>
+      <span className="flex-1 text-sm text-slate-300 truncate">{label}</span>
+      <span className="text-xs text-slate-500">{formatted}</span>
     </div>
   );
 }
