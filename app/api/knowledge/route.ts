@@ -15,10 +15,7 @@ function getBusinessProfileId(request: Request) {
 
 export async function GET(request: Request) {
   const businessProfileId = getBusinessProfileId(request);
-  if (!businessProfileId) {
-    return NextResponse.json({ entries: [] });
-  }
-  const entries = await db.knowledge(businessProfileId);
+  const entries = await db.knowledge(businessProfileId ?? undefined);
   return NextResponse.json({ entries });
 }
 
@@ -43,7 +40,7 @@ export async function POST(request: Request) {
     created_at: new Date().toISOString()
   };
 
-  const allEntries = await db.knowledge();
+  const allEntries = await db.knowledge(businessProfileId ?? undefined);
   allEntries.push(entry);
   await db.saveKnowledge(allEntries);
   return NextResponse.json({ entry });
