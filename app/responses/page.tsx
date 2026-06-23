@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import SiteNav from '@/components/site-nav';
+import SidebarNav from '@/components/sidebar-nav';
+import { MessageSquare, Copy, Download } from 'lucide-react';
 
 type ResponseTone = 'Professional' | 'Friendly' | 'Sales-focused' | 'Support';
 
@@ -81,28 +82,26 @@ ${new Date().toLocaleString()}`;
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100">
-      <SiteNav />
-      <section className="section-container py-16">
-        <div className="max-w-5xl">
-          <div className="flex items-center gap-3">
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/20 text-sky-400">
-              💬
-            </span>
-            <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-sky-400">Communication Studio</p>
-              <h1 className="mt-1 text-3xl font-bold text-white">Generate professional customer replies</h1>
+    <div className="min-h-screen bg-slate-950">
+      <SidebarNav />
+      
+      <main className="lg:pl-64">
+        <div className="px-6 py-8 lg:px-12">
+          {/* Header */}
+          <div className="max-w-4xl">
+            <div className="flex items-center gap-3">
+              <MessageSquare className="h-8 w-8 text-sky-400" />
+              <h1 className="text-2xl font-bold text-white">Communication Studio</h1>
             </div>
+            <p className="mt-2 text-slate-400">
+              AI-powered responses for WhatsApp, email, and support tickets.
+            </p>
           </div>
-          <p className="mt-4 max-w-2xl text-slate-300">
-            AI-powered responses for WhatsApp, email, and support tickets. Every response uses your business knowledge.
-          </p>
-        </div>
 
-        <div className="mt-10 rounded-3xl border border-slate-800/80 bg-slate-900/80 p-8 shadow-xl shadow-slate-950/20">
-          <div className="grid gap-8 lg:grid-cols-[1fr_1.2fr]">
+          {/* Main Grid */}
+          <div className="mt-8 grid gap-8 lg:grid-cols-2">
             {/* Input Panel */}
-            <div className="space-y-5">
+            <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-slate-200">Customer message</label>
                 <textarea
@@ -110,7 +109,7 @@ ${new Date().toLocaleString()}`;
                   onChange={(e) => setCustomerMessage(e.target.value)}
                   placeholder="Paste WhatsApp message, email, or customer inquiry..."
                   rows={6}
-                  className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none focus:border-sky-500"
+                  className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-2.5 text-slate-100 outline-none focus:border-sky-500"
                 />
               </div>
 
@@ -122,7 +121,7 @@ ${new Date().toLocaleString()}`;
                       key={t}
                       type="button"
                       onClick={() => setTone(t)}
-                      className={`rounded-xl border px-3 py-2.5 text-xs font-medium transition ${
+                      className={`rounded-lg border px-3 py-2 text-xs font-medium transition ${
                         tone === t
                           ? 'border-sky-500 bg-sky-500/20 text-sky-300'
                           : 'border-slate-700 text-slate-300 hover:border-slate-600'
@@ -138,35 +137,37 @@ ${new Date().toLocaleString()}`;
                 type="submit"
                 onClick={handleSubmit as any}
                 disabled={loading}
-                className="inline-flex w-full items-center justify-center rounded-xl bg-sky-500 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex w-full items-center justify-center rounded-lg bg-sky-500 px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loading ? 'Generating...' : 'Generate reply'}
               </button>
             </div>
 
             {/* Output Panel */}
-            <div>
+            <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-white">Generated reply</h2>
+                <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">Generated reply</h2>
                 {response && (
                   <div className="flex gap-2">
                     <button
                       onClick={() => navigator.clipboard.writeText(response)}
-                      className="rounded-lg px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800"
+                      className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800"
                     >
+                      <Copy className="h-3.5 w-3.5" />
                       Copy
                     </button>
                     <button
                       onClick={downloadTXT}
-                      className="rounded-lg bg-sky-500 px-3 py-1.5 text-xs font-medium text-slate-950 hover:bg-sky-400"
+                      className="flex items-center gap-1.5 rounded-lg bg-sky-500 px-3 py-1.5 text-xs font-medium text-slate-950 hover:bg-sky-400"
                     >
+                      <Download className="h-3.5 w-3.5" />
                       Download
                     </button>
                   </div>
                 )}
               </div>
 
-              <div className="mt-4 rounded-2xl border border-slate-800/80 bg-slate-950/50 p-6 min-h-[200px] font-sans text-sm">
+              <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-6 min-h-[200px] font-sans text-sm">
                 {loading ? (
                   <div className="space-y-3">
                     <div className="h-4 w-full animate-pulse rounded bg-slate-800" />
@@ -181,7 +182,7 @@ ${new Date().toLocaleString()}`;
                 )}
               </div>
 
-              <div className="mt-4 flex gap-2">
+              <div className="flex gap-2">
                 <button
                   onClick={() => setCustomerMessage('Hi, I\'m interested in your website design package. How much does it cost?')}
                   className="flex-1 rounded-lg border border-slate-800 px-3 py-2 text-xs text-slate-300 hover:border-slate-700"
@@ -198,7 +199,7 @@ ${new Date().toLocaleString()}`;
             </div>
           </div>
         </div>
-      </section>
-    </main>
+      </main>
+    </div>
   );
 }

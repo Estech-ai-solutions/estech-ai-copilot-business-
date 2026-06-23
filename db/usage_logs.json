@@ -40,5 +40,12 @@
     "feature": "assistant",
     "tokens_used": 478,
     "created_at": "2026-06-15T13:01:04.794Z"
+  },
+  {
+    "id": 1782064049148,
+    "business_profile_id": 1781464446018,
+    "feature": "assistant",
+    "tokens_used": 44,
+    "created_at": "2026-06-21T17:47:29.148Z"
   }
 ]

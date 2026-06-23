@@ -1,15 +1,10 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import SiteNav from '@/components/site-nav';
+import SidebarNav from '@/components/sidebar-nav';
+import { PenTool, Copy } from 'lucide-react';
 
 type ContentType = 'social' | 'description' | 'email' | 'campaign';
-
-function getAuthHeaders(): Record<string, string> {
-  if (typeof window === 'undefined') return {};
-  const token = window.localStorage.getItem('authToken');
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
 
 export default function ContentPage() {
   const [contentType, setContentType] = useState<ContentType>('social');
@@ -17,6 +12,12 @@ export default function ContentPage() {
   const [platform, setPlatform] = useState('instagram');
   const [generatedContent, setGeneratedContent] = useState('');
   const [loading, setLoading] = useState(false);
+
+  function getAuthHeaders(): Record<string, string> {
+    if (typeof window === 'undefined') return {};
+    const token = window.localStorage.getItem('authToken');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }
 
   async function handleGenerate(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -47,26 +48,32 @@ export default function ContentPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100">
-      <SiteNav />
-      <section className="section-container py-16">
-        <div className="max-w-4xl">
-          <p className="text-sm uppercase tracking-[0.3em] text-sky-400">AI Content Studio</p>
-          <h1 className="mt-4 text-4xl font-bold text-white">Generate marketing and business content instantly.</h1>
-          <p className="mt-4 text-slate-300 leading-8">
-            Create social posts, product descriptions, email copy, and campaign ideas from one place.
-          </p>
-        </div>
+    <div className="min-h-screen bg-slate-950">
+      <SidebarNav />
+      
+      <main className="lg:pl-64">
+        <div className="px-6 py-8 lg:px-12">
+          {/* Header */}
+          <div className="max-w-4xl">
+            <div className="flex items-center gap-3">
+              <PenTool className="h-8 w-8 text-sky-400" />
+              <h1 className="text-2xl font-bold text-white">Content Studio</h1>
+            </div>
+            <p className="mt-2 text-slate-400">
+              Create social posts, product descriptions, email copy, and campaign ideas.
+            </p>
+          </div>
 
-        <div className="mt-10 grid gap-6 lg:grid-cols-2">
-          <form onSubmit={handleGenerate} className="rounded-3xl border border-slate-800/80 bg-slate-900/80 p-6 shadow-xl shadow-slate-950/20">
-            <div className="space-y-4">
+          {/* Main Grid */}
+          <div className="mt-8 grid gap-8 lg:grid-cols-2">
+            {/* Input Panel */}
+            <form onSubmit={handleGenerate} className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-slate-200">Content type</label>
                 <select
                   value={contentType}
                   onChange={(e) => setContentType(e.target.value as ContentType)}
-                  className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none"
+                  className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-2.5 text-slate-100 outline-none focus:border-sky-500"
                 >
                   <option value="social">Social Media Post</option>
                   <option value="description">Product Description</option>
@@ -81,7 +88,7 @@ export default function ContentPage() {
                   <select
                     value={platform}
                     onChange={(e) => setPlatform(e.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none"
+                    className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-2.5 text-slate-100 outline-none focus:border-sky-500"
                   >
                     <option value="instagram">Instagram</option>
                     <option value="facebook">Facebook</option>
@@ -99,42 +106,44 @@ export default function ContentPage() {
                   onChange={(e) => setTopic(e.target.value)}
                   placeholder="What should the content be about?"
                   rows={4}
-                  className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none"
+                  className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-2.5 text-slate-100 outline-none focus:border-sky-500"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={loading}
-                className="inline-flex rounded-full bg-sky-500 px-6 py-3 text-sm font-semibold text-slate-950 hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex w-full items-center justify-center rounded-lg bg-sky-500 px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-sky-400 disabled:opacity-60"
               >
                 {loading ? 'Generating...' : 'Generate content'}
               </button>
-            </div>
-          </form>
+            </form>
 
-          <div className="rounded-3xl border border-slate-800/80 bg-slate-900/80 p-6 shadow-xl shadow-slate-950/20">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-white">Generated content</h2>
-              {generatedContent && (
-                <button
-                  onClick={copyToClipboard}
-                  className="rounded-full border border-slate-700 px-4 py-2 text-xs text-slate-300 hover:border-slate-500"
-                >
-                  Copy
-                </button>
-              )}
-            </div>
-            <div className="mt-4 min-h-[200px] rounded-2xl border border-slate-800/80 bg-slate-950 p-4 text-slate-200">
-              {generatedContent ? (
-                <pre className="whitespace-pre-wrap break-words text-sm leading-relaxed">{generatedContent}</pre>
-              ) : (
-                <p className="text-slate-400">Your generated content will appear here.</p>
-              )}
+            {/* Output Panel */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">Generated content</h2>
+                {generatedContent && (
+                  <button
+                    onClick={copyToClipboard}
+                    className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                    Copy
+                  </button>
+                )}
+              </div>
+              <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-6 min-h-[200px] text-sm">
+                {generatedContent ? (
+                  <pre className="whitespace-pre-wrap break-words leading-relaxed text-slate-200">{generatedContent}</pre>
+                ) : (
+                  <p className="text-slate-400">Your generated content will appear here.</p>
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </section>
-    </main>
+      </main>
+    </div>
   );
 }

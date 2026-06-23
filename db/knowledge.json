@@ -12,5 +12,13 @@
     "title": "test",
     "content": "we make basic sites for 200 dollars",
     "created_at": "2026-06-14T16:57:18.918Z"
+  },
+  {
+    "id": 1782064030325,
+    "business_profile_id": 1781464446018,
+    "type": "Pricing",
+    "title": "price of app",
+    "content": "one app is 2 milion",
+    "created_at": "2026-06-21T17:47:10.325Z"
   }
 ]
