@@ -63,3 +63,42 @@ export type Subscription = {
   started_at: string;
   current_period_end?: string;
 };
+
+export type Lead = {
+  id: number;
+  user_id: number;
+  business_name: string;
+  website?: string;
+  location: string;
+  industry: string;
+  lead_score: number;
+  reason: string;
+  opportunity?: string;
+  suggested_service?: string;
+  status: 'New' | 'Contacted' | 'Awaiting Reply' | 'Interested' | 'Proposal Sent' | 'Won' | 'Lost';
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type LeadSearch = {
+  id: number;
+  user_id: number;
+  target_industry: string;
+  target_location: string;
+  ideal_customer_description?: string;
+  search_query: string;
+  results_found: number;
+  created_at: string;
+};
+
+export type OutreachMessage = {
+  id: number;
+  lead_id: number;
+  user_id: number;
+  type: 'Email' | 'LinkedIn' | 'WhatsApp' | 'Cold Outreach';
+  subject?: string;
+  content: string;
+  status: 'Draft' | 'Sent' | 'Replied';
+  created_at: string;
+};

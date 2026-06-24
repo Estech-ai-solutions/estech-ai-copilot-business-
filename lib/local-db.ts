@@ -8,6 +8,9 @@ const KNOWLEDGE_FILE = path.join(DATA_DIR, 'knowledge.json');
 const TASKS_FILE = path.join(DATA_DIR, 'tasks.json');
 const DOCUMENTS_FILE = path.join(DATA_DIR, 'documents.json');
 const USAGE_FILE = path.join(DATA_DIR, 'usage_logs.json');
+const LEADS_FILE = path.join(DATA_DIR, 'leads.json');
+const LEAD_SEARCHES_FILE = path.join(DATA_DIR, 'lead_searches.json');
+const OUTREACH_FILE = path.join(DATA_DIR, 'outreach.json');
 
 function ensureDir() {
   if (!fs.existsSync(DATA_DIR)) {
@@ -61,10 +64,34 @@ export const localDb = {
     }
     return all;
   },
+  leads: (userId?: number) => {
+    const all = readFile(LEADS_FILE, []);
+    if (userId) {
+      return all.filter((l: any) => l.user_id === userId);
+    }
+    return all;
+  },
+  leadSearches: (userId?: number) => {
+    const all = readFile(LEAD_SEARCHES_FILE, []);
+    if (userId) {
+      return all.filter((l: any) => l.user_id === userId);
+    }
+    return all;
+  },
+  outreach: (leadId?: number) => {
+    const all = readFile(OUTREACH_FILE, []);
+    if (leadId) {
+      return all.filter((o: any) => o.lead_id === leadId);
+    }
+    return all;
+  },
   saveUsers: (data: any[]) => writeFile(USERS_FILE, data),
   saveProfiles: (data: any[]) => writeFile(PROFILES_FILE, data),
   saveKnowledge: (data: any[]) => writeFile(KNOWLEDGE_FILE, data),
   saveTasks: (data: any[]) => writeFile(TASKS_FILE, data),
   saveDocuments: (data: any[]) => writeFile(DOCUMENTS_FILE, data),
-  saveUsageLogs: (data: any[]) => writeFile(USAGE_FILE, data)
+  saveUsageLogs: (data: any[]) => writeFile(USAGE_FILE, data),
+  saveLeads: (data: any[]) => writeFile(LEADS_FILE, data),
+  saveLeadSearches: (data: any[]) => writeFile(LEAD_SEARCHES_FILE, data),
+  saveOutreach: (data: any[]) => writeFile(OUTREACH_FILE, data)
 };

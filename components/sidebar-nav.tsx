@@ -8,15 +8,14 @@ import {
   MessageSquare, 
   FileText, 
   Brain, 
-  PenTool, 
   CheckSquare, 
   BarChart3, 
   Settings,
   LogOut,
-  User
+  Target
 } from 'lucide-react';
 
-type User = { id: number; email: string; name?: string };
+type AuthUser = { id: number; email: string; name?: string };
 
 const authenticatedNavItems = [
   { label: 'Control Center', href: '/dashboard', icon: LayoutDashboard },
@@ -24,6 +23,7 @@ const authenticatedNavItems = [
   { label: 'Communication', href: '/responses', icon: MessageSquare },
   { label: 'Documents', href: '/documents', icon: FileText },
   { label: 'Brain', href: '/knowledge', icon: Brain },
+  { label: 'Leads', href: '/leads', icon: Target },
   { label: 'Tasks', href: '/tasks', icon: CheckSquare },
   { label: 'Analytics', href: '/analytics', icon: BarChart3 },
   { label: 'Settings', href: '/settings', icon: Settings }
@@ -31,7 +31,7 @@ const authenticatedNavItems = [
 
 export default function SidebarNav() {
   const pathname = usePathname();
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;

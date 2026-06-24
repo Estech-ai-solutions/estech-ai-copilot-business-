@@ -135,5 +135,88 @@ export const db = {
       if (!error) return;
     }
     return localDb.saveUsageLogs(data);
+  },
+
+  // Leads
+  async leads(userId?: number) {
+    if (useSupabase && supabase && userId) {
+      const { data, error } = await supabase
+        .from('leads')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+      if (error) return localDb.leads(userId);
+      return data || [];
+    }
+    return localDb.leads(userId);
+  },
+
+  async getLead(id: number) {
+    if (useSupabase && supabase) {
+      const { data, error } = await supabase
+        .from('leads')
+        .select('*')
+        .eq('id', id)
+        .single();
+      if (error) {
+        const all = await localDb.leads();
+        return all.find((l: any) => l.id === id);
+      }
+      return data;
+    }
+    const all = await localDb.leads();
+    return all.find((l: any) => l.id === id);
+  },
+
+  async saveLeads(data: any[]) {
+    if (useSupabase && supabase) {
+      const { error } = await supabase.from('leads').upsert(data);
+      if (!error) return;
+    }
+    return localDb.saveLeads(data);
+  },
+
+  // Lead Searches
+  async leadSearches(userId?: number) {
+    if (useSupabase && supabase && userId) {
+      const { data, error } = await supabase
+        .from('lead_searches')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+      if (error) return localDb.leadSearches(userId);
+      return data || [];
+    }
+    return localDb.leadSearches(userId);
+  },
+
+  async saveLeadSearches(data: any[]) {
+    if (useSupabase && supabase) {
+      const { error } = await supabase.from('lead_searches').upsert(data);
+      if (!error) return;
+    }
+    return localDb.saveLeadSearches(data);
+  },
+
+  // Outreach
+  async outreach(leadId?: number) {
+    if (useSupabase && supabase && leadId) {
+      const { data, error } = await supabase
+        .from('outreach')
+        .select('*')
+        .eq('lead_id', leadId)
+        .order('created_at', { ascending: false });
+      if (error) return localDb.outreach(leadId);
+      return data || [];
+    }
+    return localDb.outreach(leadId);
+  },
+
+  async saveOutreach(data: any[]) {
+    if (useSupabase && supabase) {
+      const { error } = await supabase.from('outreach').upsert(data);
+      if (!error) return;
+    }
+    return localDb.saveOutreach(data);
   }
 };
