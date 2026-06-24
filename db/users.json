@@ -12,5 +12,12 @@
     "password_hash": "9690457e20de8bc3364def58dfef7b872719bac823be22002b8837db8625da98",
     "name": "emmanuel jacson",
     "created_at": "2026-06-14T19:14:06.008Z"
+  },
+  {
+    "id": 1782310924885,
+    "email": "contactestechsolutions@gmail.com",
+    "password_hash": "82138a54e498350b80fdc071ac097795324475641206707b315e054446630e4f",
+    "name": "solomon",
+    "created_at": "2026-06-24T14:22:04.885Z"
   }
 ]

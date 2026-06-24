@@ -114,7 +114,7 @@ Respond in JSON format only:
       }
 
       return {
-        id: Date.now() + Math.random(),
+        id: Date.now() + Math.floor(Math.random() * 1000),
         user_id: userId ?? 0,
         business_name: businessName,
         website,

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import SidebarNav from '@/components/sidebar-nav';
-import { Building2, Globe, MapPin, TrendingUp, MessageSquare, Copy, Download } from 'lucide-react';
+import { Building2, Globe, MapPin, MessageSquare, Copy } from 'lucide-react';
 
 type Lead = {
   id: number;
@@ -34,13 +34,14 @@ const outreachTypes = ['Email', 'LinkedIn', 'WhatsApp', 'Cold Outreach'] as cons
 
 export default function LeadDetailPage() {
   const params = useParams();
-  const leadId = Number(params.id);
+  const leadId = params.id ? Number(params.id) : 0;
   const [lead, setLead] = useState<Lead | null>(null);
   const [outreach, setOutreach] = useState<Outreach[]>([]);
   const [generatingOutreach, setGeneratingOutreach] = useState(false);
   const [selectedOutreachType, setSelectedOutreachType] = useState<typeof outreachTypes[number]>('Email');
   const [generatedMessage, setGeneratedMessage] = useState('');
   const [notes, setNotes] = useState('');
+  const [loading, setLoading] = useState(true);
 
   function getAuthHeaders(): Record<string, string> {
     if (typeof window === 'undefined') return {};
@@ -49,15 +50,23 @@ export default function LeadDetailPage() {
   }
 
   async function loadLead() {
+    if (!leadId) return;
     try {
       const res = await fetch(`/api/leads/${leadId}`, { headers: getAuthHeaders() });
       const json = await res.json();
-      setLead(json.lead);
-      setNotes(json.lead?.notes || '');
-    } catch {}
+      if (json.lead) {
+        setLead(json.lead);
+        setNotes(json.lead.notes || '');
+      }
+    } catch (e) {
+      console.error('Failed to load lead:', e);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function loadOutreach() {
+    if (!leadId) return;
     try {
       const res = await fetch(`/api/leads/${leadId}/outreach`, { headers: getAuthHeaders() });
       const json = await res.json();
@@ -127,13 +136,26 @@ Include:
     }
   }
 
-  if (!lead) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-slate-950">
         <SidebarNav />
         <main className="lg:pl-64">
           <div className="px-6 py-8 lg:px-12">
             <p className="text-slate-400">Loading lead...</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (!lead) {
+    return (
+      <div className="min-h-screen bg-slate-950">
+        <SidebarNav />
+        <main className="lg:pl-64">
+          <div className="px-6 py-8 lg:px-12">
+            <p className="text-slate-400">Lead not found.</p>
           </div>
         </main>
       </div>
