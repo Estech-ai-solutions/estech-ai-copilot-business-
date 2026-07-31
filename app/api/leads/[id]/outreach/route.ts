@@ -1,52 +1,88 @@
 import { NextResponse } from 'next/server';
-import { getTokenFromHeader, verifyToken } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { createServerClient } from '@supabase/ssr';
+import { NextRequest } from 'next/server';
 
-function getUserId(request: Request): number | null {
-  const token = getTokenFromHeader(request);
-  if (!token) return null;
-  try {
-    const payload = verifyToken(token);
-    return payload.userId ? Number(payload.userId) : null;
-  } catch {
-    return null;
+async function getUserAndWorkspace(request: NextRequest) {
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+      },
+    }
+  );
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: 'Unauthorized', workspaceId: null };
   }
+
+  const { data: workspace } = await supabase
+    .from('workspaces')
+    .select('id')
+    .eq('created_by', user.id)
+    .limit(1)
+    .single();
+
+  return { supabase, userId: user.id, workspaceId: workspace?.id || null };
 }
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
-  const userId = getUserId(request);
-  const leadId = Number(params.id);
-
-  if (!userId) {
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+  const result = await getUserAndWorkspace(request);
+  if (result.error) {
     return NextResponse.json({ outreach: [] }, { status: 401 });
   }
 
-  const outreach = await db.outreach(leadId);
-  return NextResponse.json({ outreach });
-}
+  const { supabase, workspaceId } = result as any;
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
-  const userId = getUserId(request);
-  const leadId = Number(params.id);
-  const body = await request.json();
-  const { type, content } = body;
+  const { data: outreach, error } = await supabase
+    .from('outreach')
+    .select('*')
+    .eq('lead_id', params.id)
+    .eq('workspace_id', workspaceId);
 
-  if (!type || !content) {
-    return NextResponse.json({ error: 'type and content are required' }, { status: 400 });
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const outreach = {
-    id: Date.now(),
-    lead_id: leadId,
-    user_id: userId ?? 0,
-    type,
-    content,
-    status: 'Draft',
-    created_at: new Date().toISOString()
-  };
+  return NextResponse.json({ outreach: outreach || [] });
+}
 
-  const allOutreach = await db.outreach(leadId);
-  await db.saveOutreach([outreach, ...allOutreach]);
+export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+  const result = await getUserAndWorkspace(request);
+  if (result.error) {
+    return NextResponse.json({ error: result.error }, { status: 401 });
+  }
 
-  return NextResponse.json({ outreach });
+  const { supabase, workspaceId } = result as any;
+  const body = await request.json();
+  const { channel, message } = body;
+
+  if (!channel || !message) {
+    return NextResponse.json({ error: 'channel and message are required' }, { status: 400 });
+  }
+
+  const { data, error } = await supabase
+    .from('outreach')
+    .insert({
+      lead_id: params.id,
+      workspace_id: workspaceId,
+      channel,
+      message,
+      status: 'sent',
+    })
+    .select()
+    .single();
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ outreach: data });
 }

@@ -1,12 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import SidebarNav from '@/components/sidebar-nav';
-import { Search, Target, MessageSquare, Edit3, Trash2, FileText, ChevronRight } from 'lucide-react';
+import { MobileNav } from '@/components/mobile-nav';
+import { Target, Copy, Download, Send, Plus, X, Brain, Filter, ArrowUpRight, Globe, MapPin, Trash2 } from 'lucide-react';
+import { PageHeader, EmptyState, Section, Badge, Button, Input } from '@/components/ui';
+import { cn } from '@/lib/utils';
 
 type Lead = {
-  id: number;
+  id: string;
   business_name: string;
   website?: string;
   location: string;
@@ -15,229 +18,402 @@ type Lead = {
   reason: string;
   opportunity?: string;
   suggested_service?: string;
-  status: 'New' | 'Contacted' | 'Awaiting Reply' | 'Interested' | 'Proposal Sent' | 'Won' | 'Lost';
-};
-
-type LeadSearch = {
-  id: number;
-  target_industry: string;
-  target_location: string;
-  ideal_customer_description?: string;
-  search_query: string;
-  results_found: number;
-  created_at: string;
+  status: 'new' | 'contacted' | 'interested' | 'proposal_sent' | 'converted' | 'rejected';
+  value?: number;
 };
 
 const industries = ['Restaurants', 'Law Firms', 'Schools', 'Churches', 'Construction', 'E-commerce', 'Healthcare', 'Finance', 'Real Estate', 'Technology'];
 const locations = ['Nigeria', 'Lagos', 'Abuja', 'London', 'United States', 'New York', 'California'];
 
 export default function LeadsPage() {
+  const router = useRouter();
   const [leads, setLeads] = useState<Lead[]>([]);
-  const [searches, setSearches] = useState<LeadSearch[]>([]);
   const [targetIndustry, setTargetIndustry] = useState('Restaurants');
   const [targetLocation, setTargetLocation] = useState('Nigeria');
   const [idealCustomer, setIdealCustomer] = useState('');
   const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
-
-  function getAuthHeaders(): Record<string, string> {
-    if (typeof window === 'undefined') return {};
-    const token = window.localStorage.getItem('authToken');
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  }
-
-  async function loadLeads() {
-    try {
-      const res = await fetch('/api/leads', { headers: getAuthHeaders() });
-      const json = await res.json();
-      setLeads(json.leads ?? []);
-    } catch {}
-  }
-
-  async function loadSearches() {
-    try {
-      const res = await fetch('/api/searches', { headers: getAuthHeaders() });
-      const json = await res.json();
-      setSearches(json.searches ?? []);
-    } catch {}
-  }
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [showDetail, setShowDetail] = useState(false);
+  const [aiAdvice, setAiAdvice] = useState('');
+  const [generatingAdvice, setGeneratingAdvice] = useState(false);
 
   useEffect(() => {
     loadLeads();
-    loadSearches();
   }, []);
+
+  async function loadLeads() {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/leads');
+      const json = await res.json();
+      setLeads(json.leads ?? []);
+    } catch {
+      // Handle error
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     setSearching(true);
     try {
-      const searchQuery = `${targetIndustry} in ${targetLocation} ${idealCustomer ? `- ${idealCustomer}` : ''}`;
       const res = await fetch('/api/leads/search', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        body: JSON.stringify({
-          targetIndustry,
-          targetLocation,
-          idealCustomer
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetIndustry, targetLocation, idealCustomer })
       });
       const json = await res.json();
       if (json.leads) setLeads(json.leads);
-      loadSearches();
-    } catch {}
-    setSearching(false);
+    } catch {
+      // Handle error
+    } finally {
+      setSearching(false);
+    }
   }
 
-  async function updateLeadStatus(id: number, status: Lead['status']) {
+  async function updateLeadStatus(id: string, status: Lead['status']) {
     try {
       await fetch('/api/leads', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, status })
       });
-      setLeads((prev) => prev.map((l) => l.id === id ? { ...l, status } : l));
-    } catch {}
+      setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, status } : l)));
+    } catch {
+      // Handle error
+    }
   }
 
-  async function deleteLead(id: number) {
+  async function deleteLead(id: string) {
+    if (!window.confirm('Delete this lead?')) return;
     try {
       await fetch('/api/leads', {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id })
       });
       setLeads((prev) => prev.filter((l) => l.id !== id));
-    } catch {}
+    } catch {
+      // Handle error
+    }
   }
 
+  async function generateAiAdvice(lead: Lead) {
+    setGeneratingAdvice(true);
+    setAiAdvice('');
+    try {
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: `Analyze lead: ${lead.business_name}, ${lead.industry}, ${lead.location}. Score: ${lead.lead_score}. Provide 3 actionable outreach recommendations.`
+        })
+      });
+      const json = await res.json();
+      setAiAdvice(json.text || json.error || 'Unable to generate.');
+    } catch {
+      setAiAdvice('Failed.');
+    } finally {
+      setGeneratingAdvice(false);
+    }
+  }
+
+  function openLeadDetail(lead: Lead) {
+    setSelectedLead(lead);
+    setShowDetail(true);
+  }
+
+  const totalLeads = leads.length;
   const hotLeads = leads.filter((l) => l.lead_score >= 80).length;
-  const pipelineLeads = leads.filter((l) => ['Contacted', 'Awaiting Reply', 'Interested', 'Proposal Sent'].includes(l.status)).length;
-  const wonLeads = leads.filter((l) => l.status === 'Won').length;
+  const pipelineLeads = leads.filter((l) => ['contacted', 'interested', 'proposal_sent'].includes(l.status)).length;
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
+      <MobileNav />
       <SidebarNav />
+      <main className="lg:pl-64 pt-14 lg:pt-0">
+        <div className="px-4 py-6 lg:px-8 lg:py-8">
+          <PageHeader
+            title="Lead Intelligence"
+            description="Discover and qualify prospects for your business"
+            action={
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-text-muted hidden sm:inline">{totalLeads} total</span>
+                <Badge variant={hotLeads > 0 ? 'success' : 'default'} className="text-xs">
+                  {hotLeads} hot
+                </Badge>
+                <Badge variant={pipelineLeads > 0 ? 'primary' : 'default'} className="text-xs">
+                  {pipelineLeads} active
+                </Badge>
+              </div>
+            }
+          />
 
-      <main className="lg:pl-64">
-        <div className="px-6 py-8 lg:px-12">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-white">Lead Intelligence</h1>
-              <p className="mt-1 text-slate-400">Find and convert prospects into customers.</p>
-            </div>
-            <div className="flex gap-4">
-              <div className="text-center">
-                <p className="text-2xl font-semibold text-white">{hotLeads}</p>
-                <p className="text-xs text-slate-400">Hot Leads</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-semibold text-white">{pipelineLeads}</p>
-                <p className="text-xs text-slate-400">In Pipeline</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-semibold text-white">{wonLeads}</p>
-                <p className="text-xs text-slate-400">Won</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Search Form */}
-          <form onSubmit={handleSearch} className="mt-8 rounded-lg border border-slate-800 bg-slate-900/50 p-6">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">Lead Search</h2>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <div>
-                <label className="block text-sm font-medium text-slate-200">Industry</label>
+          <Section title="Search Filters" className="mb-6">
+            <form onSubmit={handleSearch} className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+              <div className="w-full sm:w-auto">
+                <label className="block text-xs font-medium text-text-muted mb-1.5">Industry</label>
                 <select
                   value={targetIndustry}
                   onChange={(e) => setTargetIndustry(e.target.value)}
-                  className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 outline-none focus:border-sky-500"
+                  className="w-full rounded-xl border border-border/30 bg-background-secondary/30 px-3 py-2 text-sm text-text-heading outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
                 >
-                  {industries.map((ind) => (
-                    <option key={ind} value={ind}>{ind}</option>
-                  ))}
+                  {industries.map((ind) => <option key={ind} value={ind}>{ind}</option>)}
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-200">Location</label>
+              <div className="w-full sm:w-auto">
+                <label className="block text-xs font-medium text-text-muted mb-1.5">Location</label>
                 <select
                   value={targetLocation}
                   onChange={(e) => setTargetLocation(e.target.value)}
-                  className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 outline-none focus:border-sky-500"
+                  className="w-full rounded-xl border border-border/30 bg-background-secondary/30 px-3 py-2 text-sm text-text-heading outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
                 >
-                  {locations.map((loc) => (
-                    <option key={loc} value={loc}>{loc}</option>
-                  ))}
+                  {locations.map((loc) => <option key={loc} value={loc}>{loc}</option>)}
                 </select>
               </div>
-              <div className="sm:col-span-2 lg:col-span-1">
-                <label className="block text-sm font-medium text-slate-200">Ideal Customer</label>
-                <input
+              <div className="flex-1 min-w-0 sm:min-w-60">
+                <label className="block text-xs font-medium text-text-muted mb-1.5">Ideal Customer Profile</label>
+                <Input
                   value={idealCustomer}
                   onChange={(e) => setIdealCustomer(e.target.value)}
-                  placeholder="e.g. businesses needing websites"
-                  className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 outline-none focus:border-sky-500"
+                  placeholder="Describe your ideal customer..."
                 />
               </div>
-            </div>
-            <button
-              type="submit"
-              disabled={searching}
-              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-sky-500 px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-sky-400 disabled:opacity-60"
-            >
-              <Search className="h-4 w-4" />
-              {searching ? 'Finding Leads...' : 'Find Leads'}
-            </button>
-          </form>
+              <Button
+                type="submit"
+                disabled={searching}
+                variant="primary"
+                size="md"
+                className="w-full sm:w-auto"
+              >
+                <Filter className="h-4 w-4" />
+                Search
+              </Button>
+            </form>
+          </Section>
 
-          {/* Leads Table */}
-          <div className="mt-8">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">Leads</h2>
-            <div className="mt-4 divide-y divide-slate-800 rounded-lg border border-slate-800 bg-slate-900/50">
-              {leads.length === 0 ? (
-                <p className="p-6 text-slate-400">No leads found. Use the search form above to discover prospects.</p>
-              ) : (
-                leads.map((lead) => (
-                  <div key={lead.id} className="flex items-center justify-between p-4 transition hover:bg-slate-900/60">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3">
-                        <p className="font-medium text-white">{lead.business_name}</p>
-                        <span className={`rounded-full px-2 py-1 text-xs ${
-                          lead.lead_score >= 80 ? 'bg-emerald-500/20 text-emerald-300' :
-                          lead.lead_score >= 50 ? 'bg-amber-500/20 text-amber-300' :
-                          'bg-slate-700 text-slate-300'
-                        }`}>
-                          Score: {lead.lead_score}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-sm text-slate-400">{lead.industry} • {lead.location}</p>
-                      <p className="mt-2 max-w-2xl text-sm text-slate-300 line-clamp-2">{lead.reason}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <select
-                        value={lead.status}
-                        onChange={(e) => updateLeadStatus(lead.id, e.target.value as Lead['status'])}
-                        className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-slate-200 outline-none"
-                      >
-                        <option value="New">New</option>
-                        <option value="Contacted">Contacted</option>
-                        <option value="Awaiting Reply">Awaiting Reply</option>
-                        <option value="Interested">Interested</option>
-                        <option value="Proposal Sent">Proposal Sent</option>
-                        <option value="Won">Won</option>
-                        <option value="Lost">Lost</option>
-                      </select>
-                      <Link href={`/leads/${lead.id}`} className="rounded-lg p-2 text-slate-400 hover:bg-slate-800">
-                        <ChevronRight className="h-4 w-4" />
-                      </Link>
-                    </div>
-                  </div>
-                ))
-              )}
+          <Section title="Leads">
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border/30">
+                    <th className="px-4 py-3 text-left font-medium text-text-muted text-[0.65rem] uppercase tracking-wider">Lead</th>
+                    <th className="px-4 py-3 text-center font-medium text-text-muted text-[0.65rem] uppercase tracking-wider">Score</th>
+                    <th className="px-4 py-3 text-center font-medium text-text-muted text-[0.65rem] uppercase tracking-wider">Status</th>
+                    <th className="w-20 px-4 py-3" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {leads.map((lead) => (
+                    <tr
+                      key={lead.id}
+                      className="border-b border-border/20 last:border-0 hover:bg-surface/40 transition cursor-pointer"
+                      onClick={() => router.push(`/leads/${lead.id}`)}
+                    >
+                      <td className="px-4 py-3">
+                        <div>
+                          <p className="font-medium text-text-heading">{lead.business_name}</p>
+                          <div className="flex items-center gap-3 mt-1">
+                            <span className="text-[0.65rem] text-text-muted flex items-center gap-1">
+                              <MapPin className="h-3 w-3" />
+                              {lead.location}
+                            </span>
+                            <span className="text-[0.65rem] text-text-muted flex items-center gap-1">
+                              <Globe className="h-3 w-3" />
+                              {lead.industry}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex justify-center">
+                          <Badge
+                            variant={lead.lead_score >= 80 ? 'success' : lead.lead_score >= 60 ? 'warning' : 'default'}
+                          >
+                            {lead.lead_score}
+                          </Badge>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex justify-center">
+                          <Badge variant="outline" className="text-[0.65rem]">{lead.status}</Badge>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); deleteLead(lead.id); }}
+                          className="rounded-lg p-1.5 text-text-muted hover:text-danger transition"
+                          title="Delete lead"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          </div>
+
+            <div className="sm:hidden space-y-3">
+              {leads.map((lead) => (
+                <LeadCard
+                  key={lead.id}
+                  lead={lead}
+                  onClick={() => router.push(`/leads/${lead.id}`)}
+                  onDelete={() => deleteLead(lead.id)}
+                />
+              ))}
+            </div>
+
+            {leads.length === 0 && !loading && (
+              <EmptyState
+                icon={Target}
+                title="No leads found"
+                description="Use the search filters above to discover prospects for your business"
+                action={
+                  <Button variant="primary" onClick={() => {}} className="w-full sm:w-auto">
+                    Find leads
+                  </Button>
+                }
+              />
+            )}
+          </Section>
         </div>
       </main>
+
+      {showDetail && selectedLead && (
+        <LeadDetailModal
+          lead={selectedLead}
+          onClose={() => setShowDetail(false)}
+          onStatusChange={updateLeadStatus}
+          onGenerateAdvice={generateAiAdvice}
+          aiAdvice={aiAdvice}
+          generatingAdvice={generatingAdvice}
+        />
+      )}
+    </div>
+  );
+}
+
+function LeadCard({ lead, onClick, onDelete }: {
+  lead: Lead;
+  onClick: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div
+      onClick={onClick}
+      className="rounded-xl border border-border/30 bg-background-secondary/30 p-4 cursor-pointer hover:bg-surface/50 transition"
+    >
+      <div className="flex items-start justify-between mb-2">
+        <h3 className="font-medium text-text-heading flex-1 pr-2">{lead.business_name}</h3>
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          className="rounded-lg p-1.5 text-text-muted hover:text-danger transition"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      </div>
+      <div className="flex items-center gap-3 mb-3">
+        <Badge
+          variant={lead.lead_score >= 80 ? 'success' : lead.lead_score >= 60 ? 'warning' : 'default'}
+          className="text-xs"
+        >
+          {lead.lead_score}
+        </Badge>
+        <Badge variant="outline" className="text-[0.65rem]">{lead.status}</Badge>
+      </div>
+      <div className="flex items-center gap-4 text-[0.65rem] text-text-muted">
+        <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {lead.location}</span>
+        <span className="flex items-center gap-1"><Globe className="h-3 w-3" /> {lead.industry}</span>
+      </div>
+    </div>
+  );
+}
+
+function LeadDetailModal({
+  lead,
+  onClose,
+  onStatusChange,
+  onGenerateAdvice,
+  aiAdvice,
+  generatingAdvice
+}: {
+  lead: Lead;
+  onClose: () => void;
+  onStatusChange: (id: string, status: Lead['status']) => void;
+  onGenerateAdvice: (lead: Lead) => void;
+  aiAdvice: string;
+  generatingAdvice: boolean;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-lg rounded-t-2xl sm:rounded-2xl border border-border/30 bg-surface/95 backdrop-blur-xl max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-border/30 px-4 py-4 sm:px-6 sm:py-4">
+          <div>
+            <h2 className="text-lg font-semibold text-text-heading">{lead.business_name}</h2>
+            <p className="text-sm text-text-muted">{lead.industry} • {lead.location}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-xl p-2 text-text-muted hover:text-text-heading hover:bg-surface/60 transition"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="p-4 space-y-5 sm:p-6 sm:space-y-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-4">
+            <Badge variant={lead.lead_score >= 80 ? 'success' : lead.lead_score >= 60 ? 'warning' : 'default'}>
+              Score: {lead.lead_score}
+            </Badge>
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-text-muted mb-1.5">Status</label>
+              <select
+                value={lead.status}
+                onChange={(e) => onStatusChange(lead.id, e.target.value as Lead['status'])}
+                className="w-full rounded-xl border border-border/30 bg-background-secondary/30 px-3 py-2.5 text-sm text-text-heading outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
+              >
+                <option>New</option>
+                <option>Contacted</option>
+                <option>Awaiting Reply</option>
+                <option>Interested</option>
+                <option>Proposal Sent</option>
+                <option>Won</option>
+                <option>Lost</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-[0.65rem] font-semibold uppercase tracking-wider text-text-muted mb-2">Opportunity</p>
+            <p className="text-sm text-text-heading leading-6">{lead.opportunity || lead.reason}</p>
+          </div>
+
+          <Button
+            onClick={() => onGenerateAdvice(lead)}
+            disabled={generatingAdvice}
+            variant="secondary"
+            className="w-full sm:w-auto"
+          >
+            <Brain className="h-4 w-4" />
+            {generatingAdvice ? 'Generating...' : 'Generate AI Advice'}
+          </Button>
+
+          {aiAdvice && (
+            <div className="rounded-xl border border-border/30 bg-background-secondary/30 p-4">
+              <p className="text-sm text-text-heading whitespace-pre-wrap leading-6">{aiAdvice}</p>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

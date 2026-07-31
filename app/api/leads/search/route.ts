@@ -1,21 +1,46 @@
 import { NextResponse } from 'next/server';
-import { getTokenFromHeader, verifyToken } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { createServerClient } from '@supabase/ssr';
+import { NextRequest } from 'next/server';
 import { generateAiResponse } from '@/lib/ai';
 
-function getUserId(request: Request): number | null {
-  const token = getTokenFromHeader(request);
-  if (!token) return null;
-  try {
-    const payload = verifyToken(token);
-    return payload.userId ? Number(payload.userId) : null;
-  } catch {
-    return null;
+async function getUserAndWorkspace(request: NextRequest) {
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+      },
+    }
+  );
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: 'Unauthorized', workspaceId: null };
   }
+
+  const { data: workspace } = await supabase
+    .from('workspaces')
+    .select('id')
+    .eq('created_by', user.id)
+    .limit(1)
+    .single();
+
+  return { supabase, userId: user.id, workspaceId: workspace?.id || null };
 }
 
-export async function POST(request: Request) {
-  const userId = getUserId(request);
+export async function POST(request: NextRequest) {
+  const result = await getUserAndWorkspace(request);
+  if (result.error) {
+    return NextResponse.json({ error: result.error }, { status: 401 });
+  }
+
+  const { supabase, workspaceId, userId } = result as any;
   const body = await request.json();
   const { targetIndustry, targetLocation, idealCustomer } = body;
 
@@ -23,139 +48,195 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'targetIndustry and targetLocation are required' }, { status: 400 });
   }
 
-  // Build search query
-  const searchQueries = [
-    `${targetIndustry} in ${targetLocation}`,
-    `${targetIndustry} ${targetLocation} businesses`,
-    `best ${targetIndustry} ${targetLocation}`,
-    `${idealCustomer || ''} ${targetIndustry} ${targetLocation}`.trim()
-  ];
+  const userDescription = [idealCustomer, targetIndustry, targetLocation].filter(Boolean).join(' in ');
+
+  let optimizedQuery = `${targetIndustry} in ${targetLocation}`;
+
+  try {
+    const queryResponse = await generateAiResponse(
+      `You are a search query optimizer. Given a user's description of their ideal customer or target market, generate ONE highly specific search query optimized for finding real businesses, companies, or organizations.
+
+User description: "${userDescription}"
+
+Requirements:
+- Make it specific enough to find actual businesses, not Wikipedia pages
+- Include location if provided
+- Include industry-specific terms
+- Ask for business names, websites, contact info, addresses
+- Keep it under 200 characters
+- Return ONLY the search query, nothing else`,
+      'You are a helpful assistant that generates optimized search queries for finding real businesses.'
+    );
+
+    const cleaned = (queryResponse.text || '').trim();
+    if (cleaned && !cleaned.toLowerCase().startsWith('error')) {
+      optimizedQuery = cleaned.replace(/^["']|["']$/g, '');
+    }
+  } catch (e) {
+    console.error('Failed to optimize search query:', e);
+  }
 
   const tavilyApiKey = process.env.TAVILY_API_KEY;
   let searchResults: any[] = [];
 
   if (tavilyApiKey) {
     try {
-      const responses = await Promise.all(
-        searchQueries.map(query =>
-          fetch('https://api.tavily.com/search', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${tavilyApiKey}`
-            },
-            body: JSON.stringify({ query, search_depth: 'basic', max_results: 5 })
-          }).then(r => r.json()).then(d => d.results || [])
-        )
-      );
-      searchResults = responses.flat().slice(0, 10);
+      const response = await fetch('https://api.tavily.com/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${tavilyApiKey}`,
+        },
+        body: JSON.stringify({
+          query: optimizedQuery,
+          search_depth: 'advanced',
+          max_results: 10,
+          include_raw_content: true,
+        }),
+      });
+
+      const data = await response.json();
+      searchResults = data.results || [];
     } catch (e) {
       console.error('Tavily search error:', e);
     }
   }
 
-  // For development without Tavily API, use mock data
   if (searchResults.length === 0) {
-    searchResults = Array.from({ length: 5 }, (_, i) => ({
+    searchResults = Array.from({ length: 3 }, (_, i) => ({
       title: `${targetIndustry} Business ${i + 1}`,
       url: `https://${targetIndustry.toLowerCase().replace(/\s+/g, '')}${i + 1}.com`,
       snippet: `A ${targetIndustry.toLowerCase()} business located in ${targetLocation} that ${idealCustomer || 'needs our services'}`,
-      content: `Business description for ${targetIndustry} ${i + 1} in ${targetLocation}.`
+      content: `Business description for ${targetIndustry} ${i + 1} in ${targetLocation}.`,
     }));
   }
 
-  // Get business profile for context
-  const profiles = await db.profiles();
-  const profile = profiles.find((p: any) => p.user_id === (userId ?? 0));
+  const { data: workspaceData } = await supabase
+    .from('workspaces')
+    .select('*')
+    .eq('id', workspaceId)
+    .single();
 
-  // Analyze each lead with AI
   const analyzedLeads = await Promise.all(
     searchResults.map(async (result) => {
-      const businessName = result.title || 'Unknown Business';
-      const website = result.url || '';
+      const title = result.title || 'Unknown Business';
+      const url = result.url || '';
+      const snippet = result.snippet || '';
+      const content = result.content || '';
 
-      const analysisPrompt = `Analyze this potential lead for a business:
+      let businessName = title.replace(/ - .*/, '').replace(/ \| .*/, '').trim();
+      if (!businessName || businessName.length < 2) {
+        businessName = title;
+      }
 
-Business: ${businessName}
-Location: ${targetLocation}
-Industry: ${targetIndustry}
-Description: ${result.snippet || result.content || ''}
+      const analysisPrompt = `Analyze this search result and extract structured lead information.
 
-Our business:
-${profile ? `Name: ${profile.name}
-Description: ${profile.description}
-Services: ${profile.services}
-Pricing: ${profile.pricing_info}` : 'Not specified'}
+Search Result:
+Title: ${title}
+URL: ${url}
+Snippet: ${snippet}
+Content: ${content}
 
-Ideal customer: ${idealCustomer || 'Not specified'}
+Context:
+- Target Industry: ${targetIndustry}
+- Target Location: ${targetLocation}
+- Ideal Customer: ${idealCustomer || 'Not specified'}
 
-Analyze and provide:
-1. Lead score (0-100) - how good a match
-2. Reason - why this is a good lead
-3. Opportunity - potential business opportunity
-4. Suggested service - what service we should offer them
-
-Respond in JSON format only:
+Extract and return ONLY valid JSON (no markdown, no extra text):
 {
-  "lead_score": number,
-  "reason": "string",
-  "opportunity": "string",
-  "suggested_service": "string"
+  "business_name": "string - the actual business name",
+  "website": "string - the website URL",
+  "email": "string or null - any email found",
+  "phone": "string or null - any phone number found",
+  "address": "string or null - street address if found",
+  "city": "string or null - city if found",
+  "state": "string or null - state/region if found",
+  "description": "string - brief description of the business",
+  "industry": "${targetIndustry}",
+  "lead_score": number (0-100, how good a match),
+  "reason": "string - why this is a good lead",
+  "opportunity": "string - potential business opportunity",
+  "suggested_service": "string - what service to offer"
 }`;
 
-      const aiResponse = await generateAiResponse(analysisPrompt);
-      
-      let analysis = { lead_score: 50, reason: 'Potential match', opportunity: '', suggested_service: '' };
+      let leadData: any = {
+        business_name: businessName,
+        website: url,
+        email: null,
+        phone: null,
+        address: null,
+        city: null,
+        state: null,
+        description: snippet,
+        industry: targetIndustry,
+        lead_score: 50,
+        reason: snippet || 'Potential lead from search',
+        opportunity: '',
+        suggested_service: '',
+      };
+
       try {
-        const parsed = JSON.parse(aiResponse.text);
-        analysis = parsed;
+        const aiResponse = await generateAiResponse(analysisPrompt, undefined, { maxTokens: 300 });
+        const jsonMatch = aiResponse.text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          leadData = {
+            ...leadData,
+            ...parsed,
+            lead_score: typeof parsed.lead_score === 'number' ? parsed.lead_score : Number(parsed.lead_score) || 50,
+          };
+        }
       } catch {
-        // Use default analysis
+        // Use defaults
       }
 
       return {
-        id: Date.now() + Math.floor(Math.random() * 1000),
-        user_id: userId ?? 0,
-        business_name: businessName,
-        website,
+        ...leadData,
+        workspace_id: workspaceId,
         location: targetLocation,
-        industry: targetIndustry,
-        lead_score: analysis.lead_score || 50,
-        reason: analysis.reason || result.snippet || 'Potential lead',
-        opportunity: analysis.opportunity,
-        suggested_service: analysis.suggested_service,
-        status: 'New',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        source_url: url,
+        status: 'new' as const,
+        created_by: userId,
       };
-    })
+    }),
   );
 
-  // Save to database
-  const existingLeads = await db.leads(userId ?? undefined);
-  const newLeads = analyzedLeads.filter(
-    (l: any) => !existingLeads.find((e: any) => e.business_name === l.business_name)
-  );
-  
-  if (newLeads.length > 0) {
-    const allLeads = [...existingLeads, ...newLeads];
-    await db.saveLeads(allLeads);
+  const validLeads = analyzedLeads.filter((l) => l.business_name && l.business_name !== 'Unknown Business');
+
+  if (validLeads.length > 0) {
+    const { data: existingLeads } = await supabase
+      .from('leads')
+      .select('website')
+      .eq('workspace_id', workspaceId)
+      .not('website', 'is', null);
+
+    const existingWebsites = new Set((existingLeads || [])
+      .map((l: any) => l.website)
+      .filter(Boolean));
+
+    const newLeads = validLeads.filter((l) => !existingWebsites.has(l.website));
+
+    for (const lead of newLeads) {
+      const { error } = await supabase.from('leads').insert(lead);
+      if (error) {
+        console.error('Failed to insert lead:', error);
+      }
+    }
   }
 
-  // Save search record
-  const searchRecord = {
-    id: Date.now(),
-    user_id: userId ?? 0,
-    target_industry: targetIndustry,
-    target_location: targetLocation,
-    ideal_customer_description: idealCustomer,
-    search_query: searchQueries.join(' | '),
-    results_found: newLeads.length,
-    created_at: new Date().toISOString()
-  };
+  const { data: searchRecord } = await supabase
+    .from('lead_searches')
+    .insert({
+      workspace_id: workspaceId,
+      query: optimizedQuery,
+      results_count: validLeads.length,
+    })
+    .select()
+    .single();
 
-  const existingSearches = await db.leadSearches(userId ?? undefined);
-  await db.saveLeadSearches([searchRecord, ...existingSearches]);
-
-  return NextResponse.json({ leads: analyzedLeads, search: searchRecord });
+  return NextResponse.json({
+    leads: validLeads,
+    search: searchRecord,
+    optimizedQuery,
+  });
 }

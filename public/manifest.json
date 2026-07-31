@@ -1,0 +1,38 @@
+{
+  "name": "Estech AI",
+  "short_name": "Estech",
+  "description": "AI Business Operating System - Run your business with calm, intelligent software.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0A0F19",
+  "theme_color": "#3B82F6",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "url": "/dashboard"
+    },
+    {
+      "name": "Leads",
+      "url": "/leads"
+    },
+    {
+      "name": "AI Copilot",
+      "url": "/assistant"
+    }
+  ]
+}

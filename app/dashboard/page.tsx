@@ -1,218 +1,216 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import SidebarNav from '@/components/sidebar-nav';
-import { 
-  MessageSquare, 
-  FileText, 
-  Brain, 
-  CheckSquare,
-  ArrowUpRight,
-  Activity,
-  Cpu,
-  Lightbulb
-} from 'lucide-react';
+import { MobileNav } from '@/components/mobile-nav';
+import { MessageSquare, FileText, Brain, CheckSquare, Target, Plus, TrendingUp, ArrowUpRight } from 'lucide-react';
+import { PageHeader, StatCard, Section, Badge } from '@/components/ui';
+import { supabase } from '@/lib/supabase';
+import { useSupabaseContext } from '@/providers/supabase-provider';
 
-type Counts = { knowledgeEntries: number; tasks: number; documents: number };
-type Profile = { id: number; name: string; description?: string; created_at?: string };
-type Usage = { totalTokens: number; totalRequests: number };
-type Document = { id: number; title: string; type: string; created_at: string };
-type Task = { id: number; title: string; status: string; priority: string; created_at: string };
-type KnowledgeEntry = { id: number; title: string; created_at: string };
+type Lead = {
+  id: string;
+  business_name: string;
+  status: string;
+  lead_score: number;
+};
 
-function getTimeOfDay(): string {
-  const hour = new Date().getHours();
-  if (hour < 12) return 'Good morning';
-  if (hour < 18) return 'Good afternoon';
-  return 'Good evening';
-}
+type KnowledgeEntry = {
+  id: string;
+  title: string;
+};
+
+type Task = {
+  id: string;
+  title: string;
+  status: string;
+};
+
+type Document = {
+  id: string;
+  title: string;
+  type: string;
+};
 
 export default function DashboardPage() {
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [counts, setCounts] = useState<Counts | null>(null);
-  const [usage, setUsage] = useState<Usage | null>(null);
+  const { user, loading: authLoading } = useSupabaseContext();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [knowledge, setKnowledge] = useState<KnowledgeEntry[]>([]);
+  const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = typeof window !== 'undefined' ? window.localStorage.getItem('authToken') : null;
-    if (!token) {
+    if (!user) {
       setLoading(false);
       return;
     }
 
-    const headers = { Authorization: `Bearer ${token}` };
+    const fetchData = async () => {
+      const { data: workspace } = await supabase
+        .from('workspaces')
+        .select('id')
+        .eq('created_by', user.id)
+        .limit(1)
+        .single();
 
-    Promise.all([
-      fetch('/api/profile', { headers }).then((r) => r.json()),
-      fetch('/api/usage', { headers }).then((r) => r.json()),
-      fetch('/api/documents', { headers }).then((r) => r.json()),
-      fetch('/api/tasks', { headers }).then((r) => r.json()),
-      fetch('/api/knowledge', { headers }).then((r) => r.json())
-    ])
-      .then(([profileData, usageData, docData, taskData, knowledgeData]) => {
-        if (profileData.profile) {
-          setProfile(profileData.profile);
-          setCounts(profileData.counts);
-        }
-        if (usageData.usage) setUsage(usageData.usage);
-        if (docData.documents) setDocuments(docData.documents.slice(-3).reverse());
-        if (taskData.tasks) setTasks(taskData.tasks.slice(-3).reverse());
-        if (knowledgeData.entries) setKnowledge(knowledgeData.entries.slice(-3).reverse());
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+      if (!workspace) {
+        setLoading(false);
+        return;
+      }
 
-  const timeOfDay = getTimeOfDay();
+      const workspaceId = workspace.id;
+
+      const [docData, taskData, knowledgeData, leadsData] = await Promise.all([
+        supabase.from('documents').select('*').eq('workspace_id', workspaceId),
+        supabase.from('tasks').select('*').eq('workspace_id', workspaceId),
+        supabase.from('knowledge').select('*').eq('workspace_id', workspaceId),
+        supabase.from('leads').select('*').eq('workspace_id', workspaceId),
+      ]);
+
+      if (docData.data) setDocuments(docData.data as Document[]);
+      if (taskData.data) setTasks(taskData.data as Task[]);
+      if (knowledgeData.data) setKnowledge(knowledgeData.data as KnowledgeEntry[]);
+      if (leadsData.data) setLeads(leadsData.data as Lead[]);
+
+      setLoading(false);
+    };
+
+    fetchData();
+  }, [user]);
+
+  const hotLeads = leads.filter((l) => l.lead_score >= 80).length;
+  const pipelineLeads = leads.filter((l) =>
+    ['contacted', 'interested', 'proposal_sent'].includes(l.status)
+  ).length;
+  const completedTasks = tasks.filter((t) => t.status === 'done').length;
+
+  if (authLoading || loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <MobileNav />
+        <SidebarNav />
+        <main className="lg:pl-64 pt-14 lg:pt-0">
+          <div className="px-4 py-6 lg:px-8 lg:py-8">
+            <div className="h-6 w-48 animate-pulse rounded-lg bg-border/40 mb-3 lg:h-7 lg:w-56" />
+            <div className="h-4 w-64 animate-pulse rounded-lg bg-border/40 lg:h-5 lg:w-80" />
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-slate-950">
+    <div className="min-h-screen bg-background">
+      <MobileNav />
       <SidebarNav />
-      
-      <main className="lg:pl-64">
-        <div className="px-6 py-8 lg:px-12">
-          {/* Welcome Section */}
-          <div className="max-w-4xl">
-            <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-              {timeOfDay}, {profile?.name?.split(' ')[0] || ''}
-            </h1>
-            <p className="mt-2 text-lg text-slate-300">
-              Estech AI Business Copilot is ready to assist.
-            </p>
+      <main className="lg:pl-64 pt-14 lg:pt-0">
+        <div className="px-4 py-6 lg:px-8 lg:py-8">
+          <PageHeader
+            title="Dashboard"
+            description="Your business at a glance"
+          />
+
+          <div className="mb-6 grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard icon={MessageSquare} value={tasks.length} label="Tasks" />
+            <StatCard icon={FileText} value={documents.length} label="Documents" />
+            <StatCard icon={CheckSquare} value={completedTasks} label="Completed" />
+            <StatCard icon={Target} value={hotLeads} label="Hot Leads" />
           </div>
 
-          {/* KPI Grid */}
-          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            <KpiCard
-              icon={MessageSquare}
-              title="Conversations"
-              value={usage?.totalRequests ?? 0}
-              trend="+12%"
-              subtitle="this week"
-              variant="primary"
-            />
-            <KpiCard
-              icon={FileText}
-              title="Documents"
-              value={counts?.documents ?? 0}
-              trend="+8%"
-              subtitle="this week"
-              variant="default"
-            />
-            <KpiCard
-              icon={Brain}
-              title="Knowledge"
-              value={counts?.knowledgeEntries ?? 0}
-              trend="base"
-              subtitle="active entries"
-              variant="default"
-            />
-            <KpiCard
-              icon={CheckSquare}
-              title="Tasks"
-              value={counts?.tasks ?? 0}
-              trend={counts?.tasks ? 'active' : 'ready'}
-              subtitle="to manage"
-              variant="default"
-            />
-          </div>
-
-          {/* Main Content Grid */}
-          <div className="mt-10 grid gap-8 lg:grid-cols-3">
-            {/* Workspaces + Activity */}
-            <div className="space-y-8 lg:col-span-2">
-              <div>
-                <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
-                  Workspaces
-                </h2>
-                <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                  <WorkspaceTile
-                    href="/responses"
-                    icon={MessageSquare}
-                    title="Communication Studio"
-                    description="Generate professional replies"
-                  />
-                  <WorkspaceTile
-                    href="/documents"
-                    icon={FileText}
-                    title="Document Studio"
-                    description="Create invoices, quotes, proposals"
-                  />
-                  <WorkspaceTile
-                    href="/knowledge"
-                    icon={Brain}
-                    title="Business Brain"
-                    description="Store pricing, policies, FAQs"
-                  />
-                  <WorkspaceTile
-                    href="/tasks"
-                    icon={CheckSquare}
-                    title="Task Manager"
-                    description="Track action items"
-                  />
+          <div className="grid gap-4 lg:gap-6 grid-cols-1 lg:grid-cols-3">
+            <div className="lg:col-span-2 space-y-4 lg:space-y-6">
+              <Section title="Business Health">
+                <div className="space-y-3 lg:space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-text-muted mb-1">Lead Pipeline</p>
+                      <p className="text-xl font-semibold text-text-heading lg:text-2xl">{pipelineLeads || 'No data yet'}</p>
+                    </div>
+                    <Badge variant={pipelineLeads > 0 ? 'success' : 'default'}>
+                      {pipelineLeads > 0 ? 'Growing' : 'Empty'}
+                    </Badge>
+                  </div>
+                  <div className="h-2 w-full rounded-full bg-background-secondary/60 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-primary transition-all duration-500"
+                      style={{ width: `${Math.min(100, (pipelineLeads / Math.max(1, leads.length)) * 100)}%` }}
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-4 pt-2">
+                    <MetricCard label="Knowledge entries" value={knowledge.length || 0} icon={Brain} />
+                    <MetricCard label="Task completion" value={tasks.length > 0 ? `${Math.round((completedTasks / tasks.length) * 100)}%` : '0%'} icon={TrendingUp} />
+                  </div>
                 </div>
-              </div>
+              </Section>
 
-              <div>
-                <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
-                  Recent Activity
-                </h2>
-                <div className="mt-4 divide-y divide-slate-800 rounded-xl border border-slate-800 bg-slate-900/50">
-                  {documents.map((doc) => (
-                    <ActivityRow key={`doc-${doc.id}`} icon={FileText} label={doc.title} time={doc.created_at} />
-                  ))}
-                  {tasks.map((task) => (
-                    <ActivityRow key={`task-${task.id}`} icon={CheckSquare} label={task.title} time={task.created_at} />
-                  ))}
-                  {knowledge.map((entry) => (
-                    <ActivityRow key={`knowledge-${entry.id}`} icon={Brain} label={entry.title} time={entry.created_at} />
-                  ))}
-                  {documents.length === 0 && tasks.length === 0 && knowledge.length === 0 && (
-                    <p className="p-6 text-sm text-slate-400">No activity yet. Start by adding knowledge or generating a document.</p>
+              <Section title="AI Insights">
+                <div className="space-y-2 lg:space-y-3">
+                  {knowledge.length > 0 ? (
+                    <InsightItem
+                      icon={Brain}
+                      iconClassName="bg-primary/10"
+                      iconColor="text-primary"
+                      title="Knowledge Base Active"
+                      description={`${knowledge.length} knowledge entries power your AI responses with accurate business context.`}
+                    />
+                  ) : (
+                    <InsightItem
+                      icon={Brain}
+                      iconClassName="bg-warning/10"
+                      iconColor="text-warning"
+                      title="Knowledge Needed"
+                      description="Add knowledge to your business brain for more accurate AI suggestions."
+                    />
+                  )}
+                  {leads.length > 0 ? (
+                    <InsightItem
+                      icon={Target}
+                      iconClassName="bg-success/10"
+                      iconColor="text-success"
+                      title="Lead Generation Active"
+                      description={`${hotLeads} hot leads ready for outreach. Prioritize high-score prospects first.`}
+                    />
+                  ) : (
+                    <InsightItem
+                      icon={Target}
+                      iconClassName="bg-warning/10"
+                      iconColor="text-warning"
+                      title="Lead Generation Needed"
+                      description="Start finding leads to build your pipeline."
+                    />
                   )}
                 </div>
-              </div>
+              </Section>
             </div>
 
-            {/* Insights + Status */}
-            <div className="space-y-6">
-              <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
-                <div className="flex items-center gap-2">
-                  <Cpu className="h-4 w-4 text-sky-400" />
-                  <h3 className="text-sm font-semibold text-white">AI Status</h3>
+            <div className="space-y-4 lg:space-y-6">
+              <Section title="Quick Actions">
+                <div className="space-y-2">
+                  <QuickAction href="/knowledge" icon={Plus} label="Add knowledge entry" description="Improve AI accuracy" />
+                  <QuickAction href="/leads" icon={Target} label="Find leads" description="Discover prospects" />
+                  <QuickAction href="/responses" icon={MessageSquare} label="Write reply" description="Craft response" />
+                  <QuickAction href="/documents" icon={FileText} label="Create document" description="Generate quote or proposal" />
                 </div>
-                <div className="mt-4 space-y-3">
-                  <StatusRow label="Knowledge Connected" status="online" />
-                  <StatusRow label="Model Online" status="online" />
-                  <StatusRow label="Memory Ready" status="online" />
-                  <StatusRow label="Business Context" status={profile ? 'loaded' : 'needs setup'} />
-                </div>
-              </div>
+              </Section>
 
-              <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
-                <div className="flex items-center gap-2">
-                  <Lightbulb className="h-4 w-4 text-sky-400" />
-                  <h3 className="text-sm font-semibold text-white">AI Insights</h3>
-                </div>
-                <div className="mt-4 space-y-3 text-sm">
-                  {!profile && (
-                    <p className="text-sky-400">Complete your business profile for personalized responses.</p>
-                  )}
-                  {counts?.knowledgeEntries === 0 && (
-                    <p className="text-sky-400">Add knowledge base entries for accurate customer replies.</p>
-                  )}
-                  {counts?.tasks && counts.tasks > 0 && (
-                    <p className="text-slate-300">You have {counts.tasks} tasks to manage today.</p>
-                  )}
-                  {(counts?.documents ?? 0) > 0 && (
-                    <p className="text-slate-300">Your documents library is growing. Keep creating.</p>
+              <Section title="Recent Activity">
+                <div className="space-y-1.5 lg:space-y-2 max-h-64 overflow-y-auto">
+                  {documents.slice(0, 3).map((doc) => (
+                    <div key={doc.id} className="flex items-center justify-between text-sm py-1">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-3.5 w-3.5 text-primary" />
+                        <span className="truncate text-text-heading">{doc.title}</span>
+                      </div>
+                      <span className="text-xs text-text-muted">{doc.type}</span>
+                    </div>
+                  ))}
+                  {documents.length === 0 && (
+                    <p className="text-sm text-text-muted text-center py-2">No recent activity</p>
                   )}
                 </div>
-              </div>
+              </Section>
             </div>
           </div>
         </div>
@@ -221,65 +219,49 @@ export default function DashboardPage() {
   );
 }
 
-function KpiCard({ icon: Icon, title, value, trend, subtitle, variant = 'default' }: {
-  icon: React.ElementType;
-  title: string;
-  value: number | string;
-  trend: string;
-  subtitle: string;
-  variant?: 'primary' | 'default';
-}) {
-  const trendColor = trend.startsWith('+') ? 'text-emerald-400' : 'text-slate-400';
+function MetricCard({ label, value, icon: Icon }: { label: string; value: string | number; icon: any }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6 transition hover:border-slate-700">
-      <div className="flex items-center gap-3">
-        <Icon className={`h-5 w-5 ${variant === 'primary' ? 'text-sky-400' : 'text-slate-400'}`} />
-        <span className="text-xs font-medium uppercase tracking-wider text-slate-400">{title}</span>
+    <div className="rounded-xl border border-border/30 bg-background-secondary/30 p-4">
+      <div className="flex items-center gap-2 mb-2">
+        <Icon className="h-3.5 w-3.5 text-primary" />
+        <span className="text-[0.65rem] text-text-muted uppercase tracking-wider">{label}</span>
       </div>
-      <p className="mt-3 text-2xl font-semibold text-white">{value}</p>
-      <p className={`mt-1 text-xs ${trendColor}`}>{trend} • {subtitle}</p>
+      <p className="text-xl font-semibold text-text-heading">{value}</p>
     </div>
   );
 }
 
-function WorkspaceTile({ href, icon: Icon, title, description }: {
-  href: string;
-  icon: React.ElementType;
-  title: string;
-  description: string;
-}) {
+function QuickAction({ href, icon: Icon, label, description }: { href: string; icon: any; label: string; description: string }) {
   return (
-    <Link href={href} className="group block rounded-xl border border-slate-800 bg-slate-900/50 p-6 transition-all hover:border-sky-500/50 hover:bg-slate-900/80">
-      <div className="flex items-start justify-between">
-        <Icon className="h-6 w-6 text-sky-400" />
-        <ArrowUpRight className="h-4 w-4 text-slate-500 opacity-0 transition-opacity group-hover:opacity-100" />
+    <Link
+      href={href}
+      className="flex items-center justify-between rounded-xl border border-border/30 bg-background-secondary/30 p-3.5 transition-all duration-200 hover:bg-surface/50"
+    >
+      <div className="flex items-center gap-3">
+        <Icon className="h-4 w-4 text-primary" />
+        <div>
+          <p className="text-sm font-medium text-text-heading">{label}</p>
+          <p className="text-[0.65rem] text-text-muted">{description}</p>
+        </div>
       </div>
-      <h3 className="mt-4 text-base font-semibold text-white">{title}</h3>
-      <p className="mt-2 text-sm text-slate-400">{description}</p>
+      <ArrowUpRight className="h-3.5 w-3.5 text-text-muted" />
     </Link>
   );
 }
 
-function StatusRow({ label, status }: { label: string; status: string }) {
-  const isOnline = status === 'online' || status === 'loaded';
+function InsightItem({ icon: Icon, iconClassName, iconColor, title, description }: {
+  icon: any;
+  iconClassName: string;
+  iconColor: string;
+  title: string;
+  description: string;
+}) {
   return (
-    <div className="flex items-center justify-between text-sm">
-      <span className="text-slate-300">{label}</span>
-      <span className={`text-xs ${isOnline ? 'text-emerald-400' : 'text-sky-400'}`}>
-        {isOnline ? '✓ Ready' : status}
-      </span>
-    </div>
-  );
-}
-
-function ActivityRow({ icon: Icon, label, time }: { icon: React.ElementType; label: string; time: string }) {
-  const date = new Date(time);
-  const formatted = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  return (
-    <div className="flex items-center gap-3 px-3 py-3 transition hover:bg-slate-900/60">
-      <Icon className="h-4 w-4 text-slate-400" />
-      <span className="flex-1 truncate text-sm text-slate-300">{label}</span>
-      <span className="text-xs text-slate-500">{formatted}</span>
+    <div className="flex items-start gap-3">
+      <div className={`flex h-8 w-8 items-center justify-center rounded-lg shrink-0 ${iconClassName}`}>
+        <Icon className={`h-4 w-4 ${iconColor}`} />
+      </div>
+      <p className="text-sm text-text-muted leading-6">{description}</p>
     </div>
   );
 }

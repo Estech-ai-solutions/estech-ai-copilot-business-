@@ -1,115 +1,146 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import SiteNav from '@/components/site-nav';
+import { supabase } from '@/lib/supabase';
+import { Bot, Mail, Lock, User, ArrowLeft, AlertCircle, Loader2, Building2 } from 'lucide-react';
 
 export default function RegisterPage() {
-  const router = useRouter();
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [businessName, setBusinessName] = useState('');
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const router = useRouter();
 
-  async function handleSubmit(event: React.FormEvent) {
-    event.preventDefault();
-    setError('');
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setLoading(true);
+    setError(null);
+    setMessage(null);
 
     try {
-      const res = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, name, businessName, description })
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: fullName },
+        },
       });
-      const json = await res.json();
-      if (json.error) {
-        setError(json.error);
-        return;
+
+      if (error) {
+        setError(error.message);
+      } else if (data.user) {
+        setMessage('Account created! Redirecting to sign in...');
+        setTimeout(() => router.push('/login'), 2000);
       }
-      if (json.token) {
-        window.localStorage.setItem('authToken', json.token);
-        router.push('/dashboard');
-      }
-    } catch (err) {
-      console.error(err);
-      setError('Unable to create account. Please try again.');
+    } catch (err: any) {
+      setError(err.message || 'Registration failed');
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100">
-      <SiteNav />
-      <section className="section-container py-16">
-        <div className="max-w-2xl rounded-3xl border border-slate-800/80 bg-slate-900/80 p-10 shadow-xl shadow-slate-950/20">
-          <p className="text-sm uppercase tracking-[0.3em] text-sky-400">Create your workspace</p>
-          <h1 className="mt-4 text-4xl font-bold text-white">Start your business AI workspace.</h1>
-          <p className="mt-4 text-slate-300">Register to manage your profile, knowledge base, tasks, and documents with AI-powered tooling.</p>
+    <div className="min-h-screen bg-background flex items-center justify-center px-4">
+      <div className="w-full max-w-sm space-y-6">
+        <Link href="/" className="flex items-center gap-2 justify-center">
+          <Bot className="h-8 w-8 text-primary" />
+          <span className="text-xl font-semibold text-text-heading">Estech AI</span>
+        </Link>
 
-          <form onSubmit={handleSubmit} className="mt-10 space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-slate-200">Business name</label>
+        <div className="text-center">
+          <h1 className="text-2xl font-semibold text-text-heading">Create your account</h1>
+          <p className="text-sm text-text-muted mt-1">Start building with AI-powered tools</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <div className="flex items-center gap-2 rounded-xl bg-danger/10 border border-danger/20 px-4 py-3">
+              <AlertCircle className="h-4 w-4 text-danger" />
+              <span className="text-sm text-danger">{error}</span>
+            </div>
+          )}
+
+          {message && (
+            <div className="flex items-center gap-2 rounded-xl bg-success/10 border border-success/20 px-4 py-3">
+              <span className="text-sm text-success">{message}</span>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-medium text-text-heading mb-2">Full Name</label>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
               <input
-                value={businessName}
-                onChange={(e) => setBusinessName(e.target.value)}
-                className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none"
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Jane Doe"
+                required
+                disabled={loading}
+                className="w-full pl-10 rounded-xl border border-border/60 bg-background-secondary/60 px-4 py-3 text-sm text-text-heading placeholder:text-text-muted outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-200">Email</label>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-text-heading mb-2">Email</label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none"
+                placeholder="you@example.com"
+                required
+                disabled={loading}
+                className="w-full pl-10 rounded-xl border border-border/60 bg-background-secondary/60 px-4 py-3 text-sm text-text-heading placeholder:text-text-muted outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-200">Your name</label>
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-200">Password</label>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-text-heading mb-2">Password</label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none"
+                placeholder="Minimum 6 characters"
+                required
+                minLength={6}
+                disabled={loading}
+                className="w-full pl-10 rounded-xl border border-border/60 bg-background-secondary/60 px-4 py-3 text-sm text-text-heading placeholder:text-text-muted outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-200">Business description</label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={4}
-                className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none"
-              />
-            </div>
-            {error && <p className="text-sm text-rose-400">{error}</p>}
-            <button
-              type="submit"
-              disabled={loading}
-              className="inline-flex rounded-full bg-sky-500 px-6 py-3 text-sm font-semibold text-slate-950 hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {loading ? 'Creating account...' : 'Create account'}
-            </button>
-          </form>
+          </div>
 
-          <p className="mt-6 text-sm text-slate-400">
-            Already have an account? <a href="/login" className="text-sky-300 underline hover:text-sky-200">Sign in</a>.
-          </p>
-        </div>
-      </section>
-    </main>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-medium text-white hover:bg-primary/90 transition disabled:opacity-50 flex items-center justify-center gap-2 min-h-[44px]"
+          >
+            {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+            Create account
+          </button>
+        </form>
+
+        <p className="text-sm text-text-muted text-center">
+          Already have an account?{' '}
+          <Link href="/login" className="text-primary hover:underline">
+            Sign in
+          </Link>
+        </p>
+
+        <Link href="/" className="flex items-center justify-center gap-2 text-sm text-text-muted hover:text-text-heading transition">
+          <ArrowLeft className="h-4 w-4" />
+          Back to home
+        </Link>
+      </div>
+    </div>
   );
 }

@@ -1,80 +1,126 @@
-import { NextResponse } from 'next/server';
-import { getTokenFromHeader, verifyToken } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
 
-export async function GET(request: Request) {
-  const token = getTokenFromHeader(request);
-  if (!token) {
-    return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
+async function getUserAndWorkspace(request: NextRequest) {
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+      }
+    }
+  );
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: 'Unauthorized', workspaceId: null };
   }
 
-  let payload;
-  try {
-    payload = verifyToken(token);
-  } catch (error) {
-    return NextResponse.json({ error: 'Invalid authentication token.' }, { status: 401 });
+  const { data: workspace } = await supabase
+    .from('workspaces')
+    .select('id')
+    .eq('created_by', user.id)
+    .limit(1)
+    .single();
+
+  return { supabase, userId: user.id, workspaceId: workspace?.id || null };
+}
+
+export async function GET(request: NextRequest) {
+  const result = await getUserAndWorkspace(request);
+  if (result.error) {
+    return NextResponse.json({ error: result.error }, { status: 401 });
   }
 
-  const profiles = await db.profiles();
-  const profile = profiles.find((p: any) => p.id === payload.businessProfileId);
-  if (!profile) {
-    return NextResponse.json({ error: 'Business profile not found.' }, { status: 404 });
+  const { supabase, workspaceId, userId } = result as any;
+
+  if (!workspaceId) {
+    return NextResponse.json({ error: 'No workspace found' }, { status: 404 });
   }
 
-  const businessProfileId = payload.businessProfileId ? Number(payload.businessProfileId) : undefined;
+  const [{ data: profile }, { data: workspace }, { data: membership }, { count: knowledgeCount }, { count: taskCount }, { count: documentCount }, { count: leadCount }, { count: outreachCount }] = await Promise.all([
+    supabase.from('profiles').select('*').eq('id', userId).single(),
+    supabase.from('workspaces').select('*').eq('id', workspaceId).single(),
+    supabase.from('workspace_members').select('role').eq('workspace_id', workspaceId).eq('user_id', userId).single(),
+    supabase.from('knowledge').select('*', { count: 'exact' }).eq('workspace_id', workspaceId),
+    supabase.from('tasks').select('*', { count: 'exact' }).eq('workspace_id', workspaceId),
+    supabase.from('documents').select('*', { count: 'exact' }).eq('workspace_id', workspaceId),
+    supabase.from('leads').select('*', { count: 'exact' }).eq('workspace_id', workspaceId),
+    supabase.from('outreach').select('*', { count: 'exact' }).eq('workspace_id', workspaceId),
+  ]);
 
-  const knowledge = businessProfileId ? await db.knowledge(businessProfileId) : [];
-  const knowledgeCount = knowledge.length;
-
-  const tasks = businessProfileId ? await db.tasks(businessProfileId) : [];
-  const taskCount = tasks.length;
-
-  const documents = businessProfileId ? await db.documents(businessProfileId) : [];
-  const documentCount = documents.length;
+  const completedTasks = taskCount || 0;
 
   return NextResponse.json({
-    profile,
+    profile: profile || {},
+    workspace: workspace || {},
+    role: membership?.role || 'viewer',
     counts: {
-      knowledgeEntries: knowledgeCount,
-      tasks: taskCount,
-      documents: documentCount
-    }
+      documents: documentCount || 0,
+      knowledgeEntries: knowledgeCount || 0,
+      leads: leadCount || 0,
+      messagesSent: outreachCount || 0,
+      tasksCompleted: completedTasks,
+    },
   });
 }
 
-export async function PUT(request: Request) {
-  const token = getTokenFromHeader(request);
-  if (!token) {
-    return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
+export async function PUT(request: NextRequest) {
+  const result = await getUserAndWorkspace(request);
+  if (result.error) {
+    return NextResponse.json({ error: result.error }, { status: 401 });
   }
 
-  let payload;
-  try {
-    payload = verifyToken(token);
-  } catch (error) {
-    return NextResponse.json({ error: 'Invalid authentication token.' }, { status: 401 });
-  }
-
+  const { supabase, workspaceId, userId } = result as any;
   const body = await request.json();
-  const { name, description, business_type, products, services, pricing_info } = body;
 
-  const profiles = await db.profiles();
-  const profileIndex = profiles.findIndex((p: any) => p.id === payload.businessProfileId);
-
-  if (profileIndex === -1) {
-    return NextResponse.json({ error: 'Business profile not found.' }, { status: 404 });
+  if (!workspaceId) {
+    return NextResponse.json({ error: 'No workspace found' }, { status: 404 });
   }
 
-  profiles[profileIndex] = {
-    ...profiles[profileIndex],
-    name: name ?? profiles[profileIndex].name,
-    description: description ?? profiles[profileIndex].description,
-    business_type: business_type ?? profiles[profileIndex].business_type,
-    products: products ?? profiles[profileIndex].products,
-    services: services ?? profiles[profileIndex].services,
-    pricing_info: pricing_info ?? profiles[profileIndex].pricing_info
-  };
+  const { password, ...profileUpdates } = body || {};
 
-  await db.saveProfiles(profiles);
-  return NextResponse.json({ profile: profiles[profileIndex] });
+  if (password) {
+    const { error: passwordError } = await supabase.auth.updateUser({
+      password,
+    });
+
+    if (passwordError) {
+      return NextResponse.json({ error: passwordError.message }, { status: 400 });
+    }
+  }
+
+  const allowedFields = ['full_name', 'phone', 'job_title', 'bio', 'avatar_url'];
+  const updates: Record<string, any> = { id: userId };
+
+  for (const field of allowedFields) {
+    if (field in profileUpdates) {
+      updates[field] = profileUpdates[field];
+    }
+  }
+
+  if (Object.keys(updates).length > 1) {
+    const { error } = await supabase
+      .from('profiles')
+      .update(updates)
+      .eq('id', userId);
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+  }
+
+  const { data: updatedProfile } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .single();
+
+  return NextResponse.json({ profile: updatedProfile });
 }

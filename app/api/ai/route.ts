@@ -1,9 +1,40 @@
 import { NextResponse } from 'next/server';
-import { getTokenFromHeader, verifyToken } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { createServerClient } from '@supabase/ssr';
+import { NextRequest } from 'next/server';
 import { generateAiResponse } from '@/lib/ai';
 
-export async function POST(request: Request) {
+async function getUserAndWorkspace(request: NextRequest) {
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+      },
+    }
+  );
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: 'Unauthorized', workspaceId: null };
+  }
+
+  const { data: workspace } = await supabase
+    .from('workspaces')
+    .select('id')
+    .eq('created_by', user.id)
+    .limit(1)
+    .single();
+
+  return { supabase, userId: user.id, workspaceId: workspace?.id || null };
+}
+
+export async function POST(request: NextRequest) {
   const body = await request.json();
   const prompt = body.prompt?.trim();
 
@@ -11,72 +42,54 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Prompt is required.' }, { status: 400 });
   }
 
-  const token = getTokenFromHeader(request);
+  const result = await getUserAndWorkspace(request);
+  if (result.error) {
+    return NextResponse.json({ error: result.error }, { status: 401 });
+  }
+
+  const { supabase, workspaceId } = result as any;
   let knowledge: Array<{ title: string; type: string; content: string }> = [];
-  let businessProfile: any = null;
+  let workspaceData: any = null;
 
-  if (token) {
-    try {
-      const payload = verifyToken(token);
-      const businessProfileId = payload.businessProfileId ? Number(payload.businessProfileId) : undefined;
-      
-      if (businessProfileId) {
-        // Get business profile
-        const profiles = await db.profiles();
-        businessProfile = profiles.find((p: any) => p.id === businessProfileId);
-        
-        // Get knowledge base entries
-        const knowledgeEntries = await db.knowledge(businessProfileId);
-        knowledge = knowledgeEntries.slice(0, 10);
-      }
-    } catch {
-      // Continue without knowledge if token invalid
-    }
+  if (workspaceId) {
+    const { data: ws } = await supabase
+      .from('workspaces')
+      .select('*')
+      .eq('id', workspaceId)
+      .single();
+    workspaceData = ws;
+
+    const { data: knowledgeEntries } = await supabase
+      .from('knowledge')
+      .select('*')
+      .eq('workspace_id', workspaceId)
+      .limit(10);
+
+    knowledge = knowledgeEntries || [];
   }
 
-  // Build comprehensive context
   let context = 'You are a helpful business consultant for small businesses.';
-  
-  if (businessProfile) {
-    context = `You are a business consultant for ${businessProfile.name}.`;
-    
-    if (businessProfile.description) {
-      context += `\n\nBusiness Description: ${businessProfile.description}`;
-    }
-    
-    if (businessProfile.products) {
-      context += `\n\nProducts/Services: ${businessProfile.products}`;
-    }
-    
-    if (businessProfile.pricing_info) {
-      context += `\n\nPricing Information: ${businessProfile.pricing_info}`;
+
+  if (workspaceData) {
+    context = `You are a business consultant for ${workspaceData.name}.`;
+
+    if (workspaceData.description) {
+      context += `\n\nBusiness Description: ${workspaceData.description}`;
     }
   }
-  
+
   if (knowledge.length > 0) {
-    context += `\n\nBusiness Knowledge Base:\n${knowledge.map(k => `## ${k.title} (${k.type})\n${k.content}`).join('\n\n')}`;
+    context += `\n\nBusiness Knowledge Base:\n${knowledge.map((k: any) => `## ${k.title} (${k.type})\n${k.content}`).join('\n\n')}`;
   }
 
   const aiResponse = await generateAiResponse(prompt, context);
 
-  if (token && aiResponse) {
-    try {
-      const payload = verifyToken(token);
-      const businessProfileId = payload.businessProfileId ? Number(payload.businessProfileId) : undefined;
-      if (businessProfileId) {
-        const usageLogs = await db.usageLogs(businessProfileId);
-        usageLogs.push({
-          id: Date.now(),
-          business_profile_id: payload.businessProfileId,
-          feature: 'assistant',
-          tokens_used: Math.ceil((aiResponse.text?.length || 0) / 4),
-          created_at: new Date().toISOString()
-        });
-        await db.saveUsageLogs(usageLogs);
-      }
-    } catch {
-      // Continue without logging if error
-    }
+  if (workspaceId && aiResponse) {
+    await supabase.from('usage_logs').insert({
+      workspace_id: workspaceId,
+      feature: 'assistant',
+      tokens_used: Math.ceil((aiResponse.text?.length || 0) / 4),
+    });
   }
 
   return NextResponse.json(aiResponse);

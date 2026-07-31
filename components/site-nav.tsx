@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { Bot, LogOut } from 'lucide-react';
 
 type User = { id: number; email: string; name?: string };
 
@@ -12,10 +13,6 @@ const authenticatedNavItems = [
   { label: 'Documents', href: '/documents' },
   { label: 'Brain', href: '/knowledge' },
   { label: 'Tasks', href: '/tasks' }
-];
-
-const publicNavItems = [
-  { label: 'Home', href: '/' }
 ];
 
 export default function SiteNav() {
@@ -42,33 +39,34 @@ export default function SiteNav() {
   }
 
   return (
-    <nav className="sticky top-0 z-20 border-b border-slate-800/50 bg-slate-950/80 backdrop-blur-xl">
-      <div className="section-container flex items-center justify-between py-4">
-        <Link href="/" className="font-semibold text-white">
-          Estech AI Copilot
+    <nav className="sticky top-0 z-20 border-b border-border/40 bg-background/80 backdrop-blur-xl">
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
+        <Link href="/" className="flex items-center gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/15">
+            <Bot className="h-4.5 w-4.5 text-primary" />
+          </div>
+          <span className="text-lg font-semibold text-text-heading">Estech AI</span>
         </Link>
 
-        <div className="flex items-center gap-6 text-sm text-slate-300">
-          {publicNavItems.map((item) => (
-            <Link key={item.href} href={item.href} className="transition hover:text-white">
-              {item.label}
-            </Link>
-          ))}
-
+        <div className="flex items-center gap-5 text-sm">
           {user ? (
             <div className="flex items-center gap-4">
               {authenticatedNavItems.map((item) => (
-                <Link key={item.href} href={item.href} className="transition hover:text-white">
+                <Link 
+                  key={item.href} 
+                  href={item.href} 
+                  className="text-text-muted transition hover:text-text-heading"
+                >
                   {item.label}
                 </Link>
               ))}
-              <div className="flex items-center gap-3 pl-4 border-l border-slate-700">
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-sky-500 text-xs font-semibold text-slate-950">
+              <div className="flex items-center gap-3 pl-4 border-l border-border/40">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/20 text-xs font-medium text-primary">
                   {user.name?.[0] || user.email[0].toUpperCase()}
                 </div>
                 <button
                   onClick={handleSignOut}
-                  className="text-xs text-slate-400 transition hover:text-rose-400"
+                  className="text-xs text-text-muted transition hover:text-danger"
                 >
                   Sign Out
                 </button>
@@ -76,10 +74,13 @@ export default function SiteNav() {
             </div>
           ) : (
             <div className="flex items-center gap-4">
-              <Link href="/login" className="transition hover:text-white">
+              <Link href="/login" className="text-text-muted transition hover:text-text-heading">
                 Sign In
               </Link>
-              <Link href="/register" className="rounded-full bg-sky-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-400">
+              <Link 
+                href="/register" 
+                className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-primary/90"
+              >
                 Get Started
               </Link>
             </div>
