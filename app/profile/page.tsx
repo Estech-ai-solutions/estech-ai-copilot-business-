@@ -213,7 +213,7 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-background">
       <MobileNav />
       <SidebarNav />
-      <main className="max-w-4xl mx-auto px-4 py-6 lg:px-8 lg:py-8">
+      <main className="max-w-4xl mx-auto px-4 py-6 lg:pl-64 lg:pt-0 pt-14 lg:px-8 lg:py-8">
         <PageHeader 
           title="Profile"
           description="Manage your personal information and account settings"
