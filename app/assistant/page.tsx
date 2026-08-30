@@ -317,7 +317,7 @@ export default function AssistantPage() {
                 <input
                   type="text"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
                   placeholder="Search conversations..."
                   className="w-full rounded-xl border border-border/60 bg-background-secondary/60 pl-9 pr-4 py-2 text-xs text-text-heading placeholder:text-text-muted outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
                 />
@@ -371,7 +371,7 @@ export default function AssistantPage() {
                           <input
                             type="text"
                             value={editTitle}
-                            onChange={(e) => setEditTitle(e.target.value)}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditTitle(e.target.value)}
                             onBlur={() => handleRename(conv.id)}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') handleRename(conv.id);
@@ -485,7 +485,7 @@ export default function AssistantPage() {
                 <TextArea
                   ref={textareaRef}
                   value={input}
-                  onChange={(e) => setInput(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInput(e.target.value)}
                   placeholder={activeConversation ? 'Continue the conversation...' : 'Ask Estech anything...'}
                   rows={1}
                   disabled={!activeConversation}

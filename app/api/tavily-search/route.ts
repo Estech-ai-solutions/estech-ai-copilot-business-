@@ -1,23 +1,30 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { getUserAndWorkspace } from '@/lib/auth-server';
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
+  const result = await getUserAndWorkspace(request);
+  if (result.error === 'AuthServiceUnavailable') {
+    return NextResponse.json({ error: result.message }, { status: 502 });
+  }
+  if (result.error) {
+    return NextResponse.json({ error: result.error }, { status: 401 });
+  }
+
+  const { workspaceId } = result;
   const url = new URL(request.url);
   const query = url.searchParams.get('query');
-  
+
   if (!query) {
     return NextResponse.json({ error: 'Query parameter required' }, { status: 400 });
   }
 
   const tavilyApiKey = process.env.TAVILY_API_KEY;
-  
+
   if (!tavilyApiKey) {
-    // Return mock results for development
-    return NextResponse.json({
-      results: [
-        { title: 'Sample Business 1', url: 'https://example.com', snippet: 'A sample business matching your criteria' },
-        { title: 'Sample Business 2', url: 'https://example.org', snippet: 'Another potential lead' }
-      ]
-    });
+    return NextResponse.json(
+      { error: 'Search is not configured. Please contact support.' },
+      { status: 503 }
+    );
   }
 
   try {
@@ -25,14 +32,14 @@ export async function GET(request: Request) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${tavilyApiKey}`
+        Authorization: `Bearer ${tavilyApiKey}`,
       },
       body: JSON.stringify({
         query,
         search_depth: 'basic',
         max_results: 10,
-        include_answer: false
-      })
+        include_answer: false,
+      }),
     });
 
     const data = await response.json();

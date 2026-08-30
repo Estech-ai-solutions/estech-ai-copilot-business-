@@ -27,6 +27,7 @@ cp .env.example .env
 npm run dev
 ```
 
+
 After running, you can access the application in your browser at [http://localhost:3000](http://localhost:3000) and start the setup process.
 
 #### Seeking help
@@ -54,6 +55,7 @@ Please refer to our [Documentation](https://estech-ai-solutions.github.io/estech
 **8\. Content Generator**: Create marketing copy, social media posts, email campaigns, and ad creatives. Scale your content without scaling your team.
 
 ## Using Estech AI
+
 
 -   **Cloud**
     We host a [Estech AI Cloud](https://estech-ai-solutions.github.io/estech-ai-copilot-business-) service for anyone to try with zero setup. It provides all the capabilities of the self-deployed version, with free tier access for small teams.
@@ -93,7 +95,7 @@ EXPOSE 3000
 CMD ["node", "server.js"]
 ```
 
-### Deployment with PM2
+## Deployment with PM2
 
 For production deployments, you can use PM2 to manage the Next.js process:
 
@@ -107,9 +109,13 @@ pm2 startup
 ### Environment Variables
 
 ```bash
-# AI Configuration
+# AI configruation gemini
+GEMINI_API_KEY = your-key
+# AI Configuration other
 MISTRAL_API_KEY=your-key
 MISTRAL_API_URL=https://api.mistral.ai/v1/chat/completions
+GROQ_API_KEY = your-key
+
 
 # Authentication
 JWT_SECRET=your-secret

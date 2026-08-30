@@ -88,7 +88,7 @@ export default function ResetPasswordPage() {
               <input
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                 placeholder="Minimum 6 characters"
                 required
                 minLength={6}
@@ -105,7 +105,7 @@ export default function ResetPasswordPage() {
               <input
                 type="password"
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
                 placeholder="Confirm your password"
                 required
                 disabled={loading || !!message}

@@ -102,7 +102,7 @@ export default function LeadDetailPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prompt: `Generate a personalized ${selectedOutreachType.toLowerCase()} outreach message for:
+          prompt: `Generate a complete, personalized ${selectedOutreachType.toLowerCase()} outreach message for:
 
 Lead: ${lead.business_name}
 Industry: ${lead.industry}
@@ -113,11 +113,12 @@ Suggested Service: ${lead.suggested_service || 'Our services'}
 
 Style: Professional, concise, value-focused
 Include:
-- Personalized greeting
-- Specific mention of their business
+- Personalized greeting using the lead's business name
+- Specific mention of their business or industry
 - Clear value proposition
 - Call to action
-- Professional sign-off`
+- Professional sign-off`,
+          maxTokens: 2200,
         })
       });
       const json = await res.json();
@@ -135,7 +136,7 @@ Include:
     setRecommendations(null);
 
     try {
-      const res = await fetch('/api/ai', {
+      const aiResponse = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -154,34 +155,45 @@ Lead Information:
 - Suggested Service: ${lead.suggested_service || 'Not specified'}
 - Description: ${lead.description || 'Not provided'}
 
-Provide your response in the following JSON format only (no markdown, no extra text):
-{
-  "whyGoodLead": "string - 2-3 sentences explaining why this is a valuable lead",
-  "outreachStrategy": "string - the best first outreach strategy (channel, timing, approach)",
-  "suggestedService": "string - the specific service to pitch and why",
-  "openingEmail": "string - a complete example opening email (100-150 words)",
-  "objections": "string - likely objections and how to handle them",
-  "followUpStrategy": "string - follow-up sequence and timing"
-}`
+Respond with ONLY a valid JSON object. No markdown, no code fences, no extra text:
+{"whyGoodLead":"2-3 sentences on why this lead is valuable","outreachStrategy":"best first outreach strategy: channel, timing, approach","suggestedService":"specific service to pitch and why","openingEmail":"complete example opening email, 100-150 words","objections":"likely objections and how to handle them","followUpStrategy":"follow-up sequence and timing"}`,
+          maxTokens: 1200,
         })
       });
-      const json = await res.json();
-      const text = json.text || '';
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        try {
-          setRecommendations(JSON.parse(jsonMatch[0]));
-        } catch {
-          setRecommendations({
-            whyGoodLead: text,
+      const aiJson = await aiResponse.json();
+      const text = aiJson.text || '';
+      const trimmed = text.trim();
+      let recommendations: AIRecommendations | null = null;
+
+      if (trimmed) {
+        let candidate = trimmed.replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
+
+        const jsonMatch = candidate.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          try {
+            recommendations = JSON.parse(jsonMatch[0]) as AIRecommendations;
+          } catch {
+            recommendations = null;
+          }
+        }
+
+        if (recommendations && typeof recommendations.whyGoodLead === 'string' && recommendations.whyGoodLead.trim().startsWith('{')) {
+          recommendations = null;
+        }
+
+        if (!recommendations) {
+          recommendations = {
+            whyGoodLead: 'AI analysis complete. Review the details below.',
             outreachStrategy: '',
             suggestedService: '',
             openingEmail: '',
             objections: '',
             followUpStrategy: '',
-          });
+          };
         }
       }
+
+      setRecommendations(recommendations);
     } catch {
       setRecommendations({
         whyGoodLead: 'Failed to generate recommendations.',

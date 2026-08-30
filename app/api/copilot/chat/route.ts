@@ -1,113 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
 import { generateAiChatResponse } from '@/lib/ai';
-
-async function getUserAndWorkspace(request: NextRequest) {
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-      },
-    }
-  );
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { error: 'Unauthorized', workspaceId: null, userId: null };
-  }
-
-  const { data: workspace } = await supabase
-    .from('workspaces')
-    .select('id')
-    .eq('created_by', user.id)
-    .limit(1)
-    .single();
-
-  return { supabase, userId: user.id, workspaceId: workspace?.id || null };
-}
-
-function extractSearchTerms(query: string): string[] {
-  const stopWords = new Set([
-    'who', 'what', 'where', 'when', 'why', 'how', 'is', 'are', 'was', 'were',
-    'the', 'a', 'an', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from',
-    'and', 'or', 'but', 'not', 'no', 'yes', 'do', 'does', 'did', 'can', 'could',
-    'would', 'should', 'will', 'shall', 'may', 'might', 'must', 'have', 'has', 'had',
-    'been', 'being', 'be', 'this', 'that', 'these', 'those', 'my', 'your', 'his',
-    'her', 'its', 'our', 'their', 'tell', 'about', 'explain', 'describe', 'list',
-    'show', 'give', 'need', 'want', 'looking', 'please', 'can', 'you', 'me', 'us'
-  ]);
-
-  return query
-    .toLowerCase()
-    .replace(/[^\w\s]/g, '')
-    .split(/\s+/)
-    .filter(word => word.length > 2 && !stopWords.has(word));
-}
-
-async function searchKnowledge(supabase: any, workspaceId: string, query: string, limit = 5) {
-  const searchTerm = query.trim();
-  const queryLimit = Math.min(20, Math.max(1, limit));
-
-  const searchTerms = extractSearchTerms(searchTerm);
-  const dynamicLimit = Math.max(queryLimit * 3, 20);
-
-  let q = supabase
-    .from('knowledge')
-    .select('id, title, category, content, tags, created_at, updated_at')
-    .eq('workspace_id', workspaceId)
-    .order('created_at', { ascending: false })
-    .limit(dynamicLimit);
-
-  if (searchTerms.length > 0) {
-    const orConditions = searchTerms.map(term => 'title.ilike.%' + term + '%,content.ilike.%' + term + '%').join(',');
-    q = q.or(orConditions);
-  }
-
-  const { data: entries } = await q;
-
-  const results = (entries || []).map((entry: any) => {
-    const titleLower = entry.title.toLowerCase();
-    const contentLower = entry.content.toLowerCase();
-    const searchLower = searchTerm.toLowerCase();
-
-    let relevanceScore = 0;
-
-    if (titleLower.includes(searchLower)) {
-      relevanceScore += 10;
-    }
-
-    const searchWords = searchLower.split(/\s+/).filter((w: string) => w.length > 2);
-    const matchedWords = searchWords.filter((word: string) => contentLower.includes(word));
-    relevanceScore += matchedWords.length * 2;
-
-    const exactMatches = (entry.content.match(new RegExp(searchLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
-    relevanceScore += exactMatches * 3;
-
-    return {
-      ...entry,
-      relevanceScore,
-    };
-  });
-
-  results.sort((a: any, b: any) => b.relevanceScore - a.relevanceScore);
-
-  return results.slice(0, queryLimit);
-}
+import { retrieveRelevantKnowledge, buildKnowledgeContext } from '@/lib/knowledge/retrieval';
+import { getUserAndWorkspace } from '@/lib/auth-server';
 
 export async function POST(request: NextRequest) {
   const result = await getUserAndWorkspace(request);
+  if (result.error === 'AuthServiceUnavailable') {
+    return NextResponse.json({ error: result.message }, { status: 502 });
+  }
   if (result.error) {
     return NextResponse.json({ error: result.error }, { status: 401 });
   }
 
-  const { supabase, workspaceId, userId } = result as any;
+  const { supabase, userId, workspaceId } = result;
   const body = await request.json();
   const { conversationId, message } = body || {};
 
@@ -143,10 +48,15 @@ export async function POST(request: NextRequest) {
     .order('created_at', { ascending: true })
     .limit(20);
 
-  const knowledgeResults = await searchKnowledge(supabase, workspaceId, trimmedMessage, 5);
+  let knowledgeResults: any[] = [];
+  if (workspaceId) {
+    knowledgeResults = await retrieveRelevantKnowledge(supabase, workspaceId, trimmedMessage, { limit: 5 });
+  }
   const knowledgeCount = knowledgeResults.length;
 
   console.log('[Copilot] Knowledge entries retrieved:', knowledgeCount, 'for query:', trimmedMessage);
+
+  const knowledgeContextStr = buildKnowledgeContext(knowledgeResults);
 
   let systemPrompt = 'You are Estech AI Business Copilot.\n\n';
   systemPrompt += 'Below is trusted business knowledge from the user\'s Business Brain.\n';
@@ -155,12 +65,8 @@ export async function POST(request: NextRequest) {
   systemPrompt += 'If it does not exist, say you do not know.\n';
   systemPrompt += 'Never ignore the provided knowledge.\n\n';
 
-  if (knowledgeCount > 0) {
-    systemPrompt += 'Business Knowledge:\n';
-    knowledgeResults.forEach((entry: any, index: number) => {
-      systemPrompt += (index + 1) + '. [' + entry.category.toUpperCase() + '] ' + entry.title + '\n';
-      systemPrompt += entry.content + '\n\n';
-    });
+  if (knowledgeContextStr) {
+    systemPrompt += knowledgeContextStr + '\n';
   } else {
     systemPrompt += 'No relevant business knowledge was found for this query.\n';
   }
@@ -178,7 +84,6 @@ export async function POST(request: NextRequest) {
   messagesPayload.push({ role: 'user', content: trimmedMessage });
 
   const aiResponse = await generateAiChatResponse(messagesPayload, {
-    provider: 'mistral',
     maxTokens: 1000,
   });
 
@@ -208,6 +113,7 @@ export async function POST(request: NextRequest) {
       workspace_id: workspaceId,
       feature: 'assistant',
       tokens_used: Math.ceil(assistantText.length / 4),
+      metadata: { knowledgeEntriesRetrieved: knowledgeCount },
     });
   }
 

@@ -1,51 +1,56 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import SidebarNav from '@/components/sidebar-nav';
 import { MobileNav } from '@/components/mobile-nav';
 import { CheckSquare, Plus, Trash2, Check, Calendar, Clock, ArrowUpRight } from 'lucide-react';
 import { PageHeader, EmptyState, Section, Badge, Button, Input } from '@/components/ui';
 
-type Task = { 
-  id: number; 
-  title: string; 
-  status: 'Todo' | 'In Progress' | 'Done'; 
-  priority?: 'Low' | 'Medium' | 'High';
-  due_date?: string;
-  created_at?: string;
-};
+export const dynamic = 'force-dynamic';
 
-function cn(...classes: (string | undefined | null | false)[]): string {
-  return classes.filter(Boolean).join(' ');
-}
+function TasksPageContent() {
+  const searchParams = useSearchParams();
 
-function StatCardSimple({ 
-  icon: Icon, 
-  value, 
-  label,
-  iconColor,
-  valueColor = 'text-text-heading'
-}: { 
-  icon: any; 
-  value: string | number; 
-  label: string;
-  iconColor?: string;
-  valueColor?: string;
-}) {
-  return (
-    <div className="rounded-xl border border-border/40 bg-background-secondary/40 p-4 lg:p-5 transition-all duration-200">
-      <div className="flex items-center gap-2 mb-1">
-        <Icon className={cn('h-4 w-4', iconColor)} />
-        <p className="text-xs text-text-muted">{label}</p>
+  type Task = {
+    id: string;
+    title: string;
+    status: 'pending' | 'in_progress' | 'done' | 'cancelled';
+    priority?: 'low' | 'medium' | 'high';
+    due_date?: string;
+    created_at?: string;
+  };
+
+  function cn(...classes: (string | undefined | null | false)[]): string {
+    return classes.filter(Boolean).join(' ');
+  }
+
+  function StatCardSimple({ 
+    icon: Icon, 
+    value, 
+    label,
+    iconColor,
+    valueColor = 'text-text-heading'
+  }: { 
+    icon: any; 
+    value: string | number; 
+    label: string;
+    iconColor?: string;
+    valueColor?: string;
+  }) {
+    return (
+      <div className="rounded-xl border border-border/40 bg-background-secondary/40 p-4 lg:p-5 transition-all duration-200">
+        <div className="flex items-center gap-2 mb-1">
+          <Icon className={cn('h-4 w-4', iconColor)} />
+          <p className="text-xs text-text-muted">{label}</p>
+        </div>
+        <p className={cn('text-xl lg:text-2xl font-semibold', valueColor)}>{value}</p>
       </div>
-      <p className={cn('text-xl lg:text-2xl font-semibold', valueColor)}>{value}</p>
-    </div>
-  );
-}
+    );
+  }
 
-export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [newTask, setNewTask] = useState('');
+  const [newTask, setNewTask] = useState(searchParams.get('title') || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -85,7 +90,7 @@ export default function TasksPage() {
     }
   }
 
-  async function handleDelete(id: number) {
+  async function handleDelete(id: string) {
     if (!confirm('Delete this task?')) return;
     try {
       await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
@@ -95,7 +100,7 @@ export default function TasksPage() {
     }
   }
 
-  async function updateTaskStatus(id: number, status: Task['status']) {
+  async function updateTaskStatus(id: string, status: Task['status']) {
     try {
       await fetch(`/api/tasks/${id}`, {
         method: 'PUT',
@@ -108,9 +113,9 @@ export default function TasksPage() {
     }
   }
 
-  const todoTasks = tasks.filter(t => t.status === 'Todo');
-  const inProgressTasks = tasks.filter(t => t.status === 'In Progress');
-  const doneTasks = tasks.filter(t => t.status === 'Done');
+  const todoTasks = tasks.filter(t => t.status === 'pending');
+  const inProgressTasks = tasks.filter(t => t.status === 'in_progress');
+  const doneTasks = tasks.filter(t => t.status === 'done');
 
   return (
     <div className="min-h-screen bg-background">
@@ -148,7 +153,7 @@ export default function TasksPage() {
           <form onSubmit={handleAddTask} className="mb-6 flex flex-col sm:flex-row gap-3">
             <Input
               value={newTask}
-              onChange={(e) => setNewTask(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTask(e.target.value)}
               placeholder="Add a new task..."
               className="w-full"
             />
@@ -174,17 +179,17 @@ export default function TasksPage() {
                 >
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <button
-                      onClick={() => updateTaskStatus(task.id, task.status === 'Done' ? 'Todo' : 'Done')}
+                      onClick={() => updateTaskStatus(task.id, task.status === 'done' ? 'pending' : 'done')}
                       className={`flex h-5 w-5 items-center justify-center rounded-md border transition min-w-[44px] min-h-[44px] sm:min-w-5 sm:min-h-5 ${
-                        task.status === 'Done' 
+                        task.status === 'done' 
                           ? 'bg-success/20 border-success text-success' 
                           : 'border-border/60 hover:bg-surface/60'
                       }`}
-                      title={task.status === 'Done' ? 'Mark incomplete' : 'Mark complete'}
+                      title={task.status === 'done' ? 'Mark incomplete' : 'Mark complete'}
                     >
-                      {task.status === 'Done' && <Check className="h-3 w-3" />}
+                      {task.status === 'done' && <Check className="h-3 w-3" />}
                     </button>
-                    <span className={cn('truncate flex-1', task.status === 'Done' ? 'text-text-muted line-through' : 'text-text-heading')}>
+                    <span className={cn('truncate flex-1', task.status === 'done' ? 'text-text-muted line-through' : 'text-text-heading')}>
                       {task.title}
                     </span>
                     {task.due_date && (
@@ -223,5 +228,28 @@ export default function TasksPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+function TasksPageSkeleton() {
+  return (
+    <div className="min-h-screen bg-background">
+      <MobileNav />
+      <SidebarNav />
+      <main className="lg:pl-64 pt-14 lg:pt-0">
+        <div className="px-4 py-6 lg:px-8 lg:py-8">
+          <div className="h-6 w-48 animate-pulse rounded-lg bg-border/40 mb-3 lg:h-7 lg:w-56" />
+          <div className="h-4 w-64 animate-pulse rounded-lg bg-border/40 lg:h-5 lg:w-80" />
+        </div>
+      </main>
+    </div>
+  );
+}
+
+export default function TasksPage() {
+  return (
+    <Suspense fallback={<TasksPageSkeleton />}>
+      <TasksPageContent />
+    </Suspense>
   );
 }

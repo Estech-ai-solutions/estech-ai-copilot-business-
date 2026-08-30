@@ -220,7 +220,7 @@ export default function SettingsPage() {
                 <label className="block text-xs font-medium text-text-heading mb-2">Company Name</label>
                 <Input
                   value={settings.company_name ?? ''}
-                  onChange={(e) => setSettings({ ...settings, company_name: e.target.value })}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSettings({ ...settings, company_name: e.target.value })}
                   placeholder="Your company name"
                 />
               </div>
@@ -228,7 +228,7 @@ export default function SettingsPage() {
                 <label className="block text-xs font-medium text-text-heading mb-2">Business Industry</label>
                 <Select
                   value={settings.industry ?? ''}
-                  onChange={(e) => setSettings({ ...settings, industry: e.target.value })}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSettings({ ...settings, industry: e.target.value })}
                   options={industries}
                   placeholder="Select industry"
                 />
@@ -238,7 +238,7 @@ export default function SettingsPage() {
                   <label className="block text-xs font-medium text-text-heading mb-2">Timezone</label>
                   <Select
                     value={settings.timezone ?? 'UTC'}
-                    onChange={(e) => setSettings({ ...settings, timezone: e.target.value })}
+                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSettings({ ...settings, timezone: e.target.value })}
                     options={timezones}
                   />
                 </div>
@@ -246,7 +246,7 @@ export default function SettingsPage() {
                   <label className="block text-xs font-medium text-text-heading mb-2">Language</label>
                   <Select
                     value={settings.language ?? 'en'}
-                    onChange={(e) => setSettings({ ...settings, language: e.target.value })}
+                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSettings({ ...settings, language: e.target.value })}
                     options={languages}
                   />
                 </div>
@@ -274,7 +274,7 @@ export default function SettingsPage() {
                 <label className="block text-xs font-medium text-text-heading mb-2">Preferred AI Model</label>
                 <Select
                   value={settings.ai_model ?? 'mistral'}
-                  onChange={(e) => setSettings({ ...settings, ai_model: e.target.value })}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSettings({ ...settings, ai_model: e.target.value })}
                   options={aiModels}
                 />
               </div>
@@ -282,7 +282,7 @@ export default function SettingsPage() {
                 <label className="block text-xs font-medium text-text-heading mb-2">Response Length</label>
                 <Select
                   value={settings.response_length ?? 'balanced'}
-                  onChange={(e) => setSettings({ ...settings, response_length: e.target.value })}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSettings({ ...settings, response_length: e.target.value })}
                   options={responseLengths}
                 />
               </div>
@@ -298,7 +298,7 @@ export default function SettingsPage() {
                     max="1"
                     step="0.1"
                     value={settings.temperature ?? 0.7}
-                    onChange={(e) => setSettings({ ...settings, temperature: parseFloat(e.target.value) })}
+                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings({ ...settings, temperature: parseFloat(e.target.value) })}
                     className="flex-1 h-2 rounded-full bg-border/60 appearance-none cursor-pointer accent-primary"
                   />
                 </div>
@@ -330,7 +330,7 @@ export default function SettingsPage() {
                   <label className="block text-xs font-medium text-text-heading mb-2">Default Country</label>
                   <Select
                     value={settings.default_country ?? 'US'}
-                    onChange={(e) => setSettings({ ...settings, default_country: e.target.value })}
+                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSettings({ ...settings, default_country: e.target.value })}
                     options={countries}
                   />
                 </div>
@@ -338,7 +338,7 @@ export default function SettingsPage() {
                   <label className="block text-xs font-medium text-text-heading mb-2">Default Industry</label>
                   <Select
                     value={settings.default_industry ?? ''}
-                    onChange={(e) => setSettings({ ...settings, default_industry: e.target.value })}
+                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSettings({ ...settings, default_industry: e.target.value })}
                     options={industries}
                     placeholder="Select industry"
                   />
@@ -351,7 +351,7 @@ export default function SettingsPage() {
                   min={1}
                   max={50}
                   value={String(settings.max_search_results ?? 10)}
-                  onChange={(e) => setSettings({ ...settings, max_search_results: parseInt(e.target.value) || 10 })}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSettings({ ...settings, max_search_results: parseInt(e.target.value) || 10 })}
                 />
               </div>
               <div className="flex justify-end">
@@ -376,7 +376,7 @@ export default function SettingsPage() {
                 <label className="block text-xs font-medium text-text-heading mb-2">Default Email Signature</label>
                 <TextArea
                   value={settings.email_signature ?? ''}
-                  onChange={(e) => setSettings({ ...settings, email_signature: e.target.value })}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSettings({ ...settings, email_signature: e.target.value })}
                   rows={3}
                   placeholder="Best regards,&#10;Your Name&#10;Your Company"
                 />
@@ -385,7 +385,7 @@ export default function SettingsPage() {
                 <label className="block text-xs font-medium text-text-heading mb-2">WhatsApp Signature</label>
                 <TextArea
                   value={settings.whatsapp_signature ?? ''}
-                  onChange={(e) => setSettings({ ...settings, whatsapp_signature: e.target.value })}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSettings({ ...settings, whatsapp_signature: e.target.value })}
                   rows={2}
                   placeholder="Thanks, Your Name"
                 />

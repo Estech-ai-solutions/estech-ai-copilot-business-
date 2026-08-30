@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import SidebarNav from '@/components/sidebar-nav';
 import { MobileNav } from '@/components/mobile-nav';
 import { MessageSquare, Copy, Download, Send, X, List, Target, FileText, ArrowUpRight } from 'lucide-react';
@@ -9,17 +10,21 @@ import { PageHeader, EmptyState, Section, Badge, Button, TextArea } from '@/comp
 import { useSupabaseContext } from '@/providers/supabase-provider';
 import { cleanMarkdown, formatResponseText } from '@/lib/utils';
 
-type ResponseTone = 'Professional' | 'Friendly' | 'Sales-focused' | 'Support';
+export const dynamic = 'force-dynamic';
 
-type StructuredResponse = {
-  subject: string;
-  message: string;
-  suggestedAction: string;
-};
-
-export default function ResponsesPage() {
+function ResponsesPageContent() {
+  const searchParams = useSearchParams();
   const { profile, workspace } = useSupabaseContext();
-  const [customerMessage, setCustomerMessage] = useState('');
+
+  type ResponseTone = 'Professional' | 'Friendly' | 'Sales-focused' | 'Support';
+
+  type StructuredResponse = {
+    subject: string;
+    message: string;
+    suggestedAction: string;
+  };
+
+  const [customerMessage, setCustomerMessage] = useState(searchParams.get('message') || '');
   const [tone, setTone] = useState<ResponseTone>('Professional');
   const [loading, setLoading] = useState(false);
   const [structured, setStructured] = useState<StructuredResponse | null>(null);
@@ -94,27 +99,37 @@ Return your response in the following JSON format only (no markdown, no extra te
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: buildPrompt(),
+          maxTokens: 38000,
         }),
       });
       const json = await res.json();
       const text = json.text || json.error || 'No response generated.';
 
-      const cleanedText = cleanMarkdown(text);
+      const trimmed = text.trim();
+      let parsed: { subject?: string; message?: string; suggestedAction?: string } | null = null;
 
-      const jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        try {
-          const parsed = JSON.parse(jsonMatch[0]);
-          setStructured({
-            subject: parsed.subject || 'No subject',
-            message: parsed.message || cleanedText,
-            suggestedAction: parsed.suggestedAction || '',
-          });
-          setRawResponse('');
-        } catch {
-          setRawResponse(cleanedText);
+      if (trimmed) {
+        let candidate = trimmed.replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
+
+        const jsonMatch = candidate.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          try {
+            parsed = JSON.parse(jsonMatch[0]);
+          } catch {
+            parsed = null;
+          }
         }
+      }
+
+      if (parsed) {
+        setStructured({
+          subject: parsed.subject || 'No subject',
+          message: parsed.message || '',
+          suggestedAction: parsed.suggestedAction || '',
+        });
+        setRawResponse('');
       } else {
+        const cleanedText = cleanMarkdown(text);
         setRawResponse(cleanedText);
       }
     } catch {
@@ -143,7 +158,7 @@ Return your response in the following JSON format only (no markdown, no extra te
   function copyToClipboard(text: string, field: string) {
     navigator.clipboard.writeText(text);
     setCopiedField(field);
-    setTimeout(() => setCopiedField(null), 2000);
+    setTimeout(() => setCopiedField(null), 5000);
   }
 
   function downloadResponse() {
@@ -186,7 +201,7 @@ Return your response in the following JSON format only (no markdown, no extra te
               <Section title="Customer Message">
                 <TextArea
                   value={customerMessage}
-                  onChange={(e) => setCustomerMessage(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCustomerMessage(e.target.value)}
                   placeholder="Paste the customer message here..."
                   rows={5}
                 />
@@ -468,5 +483,28 @@ Return your response in the following JSON format only (no markdown, no extra te
         </div>
       )}
     </div>
+  );
+}
+
+function ResponsesPageSkeleton() {
+  return (
+    <div className="min-h-screen bg-background">
+      <MobileNav />
+      <SidebarNav />
+      <main className="lg:pl-64 pt-14 lg:pt-0">
+        <div className="px-4 py-6 lg:px-8 lg:py-8">
+          <div className="h-6 w-48 animate-pulse rounded-lg bg-border/40 mb-3 lg:h-7 lg:w-56" />
+          <div className="h-4 w-64 animate-pulse rounded-lg bg-border/40 lg:h-5 lg:w-80" />
+        </div>
+      </main>
+    </div>
+  );
+}
+
+export default function ResponsesPage() {
+  return (
+    <Suspense fallback={<ResponsesPageSkeleton />}>
+      <ResponsesPageContent />
+    </Suspense>
   );
 }

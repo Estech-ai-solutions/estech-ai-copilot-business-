@@ -1,37 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
 import { generateAiResponse } from '@/lib/ai';
-
-async function getUserAndWorkspace(request: NextRequest) {
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-      },
-    }
-  );
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { error: 'Unauthorized', workspaceId: null, userId: null };
-  }
-
-  const { data: workspace } = await supabase
-    .from('workspaces')
-    .select('id')
-    .eq('created_by', user.id)
-    .limit(1)
-    .single();
-
-  return { supabase, userId: user.id, workspaceId: workspace?.id || null };
-}
+import { getUserAndWorkspace } from '@/lib/auth-server';
 
 function buildGenerationPrompt(contentType: string, goal?: string, audience?: string, instructions?: string, existingContent?: string, action?: string) {
   if (action && existingContent) {
@@ -79,11 +48,14 @@ function buildGenerationPrompt(contentType: string, goal?: string, audience?: st
 
 export async function POST(request: NextRequest) {
   const result = await getUserAndWorkspace(request);
+  if (result.error === 'AuthServiceUnavailable') {
+    return NextResponse.json({ error: result.message }, { status: 502 });
+  }
   if (result.error) {
     return NextResponse.json({ error: result.error }, { status: 401 });
   }
 
-  const { supabase, workspaceId, userId } = result as any;
+  const { supabase, userId, workspaceId } = result;
   const body = await request.json();
   const { contentType, goal, audience, instructions, existingContent, action } = body || {};
 

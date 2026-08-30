@@ -1,36 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-
-async function getUserAndWorkspace(request: NextRequest) {
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-      },
-    }
-  );
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { error: 'Unauthorized', workspaceId: null, userId: null };
-  }
-
-  const { data: workspace } = await supabase
-    .from('workspaces')
-    .select('id')
-    .eq('created_by', user.id)
-    .limit(1)
-    .single();
-
-  return { supabase, userId: user.id, workspaceId: workspace?.id || null };
-}
+import { getUserAndWorkspace } from '@/lib/auth-server';
+import { createKnowledgeChunks } from '@/lib/knowledge/indexing';
 
 function buildKnowledgeQuery(supabase: any, workspaceId: string, searchParams: URLSearchParams) {
   let query = supabase
@@ -41,6 +11,7 @@ function buildKnowledgeQuery(supabase: any, workspaceId: string, searchParams: U
   const search = searchParams.get('search');
   const category = searchParams.get('category');
   const tag = searchParams.get('tag');
+  const sourceType = searchParams.get('source_type');
   const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
   const limit = Math.min(50, Math.max(1, parseInt(searchParams.get('limit') || '10')));
   const sortBy = searchParams.get('sortBy') || 'created_at';
@@ -52,6 +23,10 @@ function buildKnowledgeQuery(supabase: any, workspaceId: string, searchParams: U
 
   if (category) {
     query = query.eq('category', category);
+  }
+
+  if (sourceType) {
+    query = query.eq('source_type', sourceType);
   }
 
   if (tag) {
@@ -73,11 +48,14 @@ function buildKnowledgeQuery(supabase: any, workspaceId: string, searchParams: U
 
 export async function GET(request: NextRequest) {
   const result = await getUserAndWorkspace(request);
+  if (result.error === 'AuthServiceUnavailable') {
+    return NextResponse.json({ error: result.message }, { status: 502 });
+  }
   if (result.error) {
     return NextResponse.json({ error: result.error }, { status: 401 });
   }
 
-  const { supabase, workspaceId } = result as any;
+  const { supabase, userId, workspaceId } = result;
 
   if (!workspaceId) {
     return NextResponse.json({ entries: [], total: 0, page: 1, limit: 10, totalPages: 0 });
@@ -106,11 +84,14 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const result = await getUserAndWorkspace(request);
+  if (result.error === 'AuthServiceUnavailable') {
+    return NextResponse.json({ error: result.message }, { status: 502 });
+  }
   if (result.error) {
     return NextResponse.json({ error: result.error }, { status: 401 });
   }
 
-  const { supabase, workspaceId, userId } = result as any;
+  const { supabase, userId, workspaceId } = result;
   const body = await request.json();
   const { title, category, content, tags } = body || {};
 
@@ -149,16 +130,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  try {
+    await createKnowledgeChunks(supabase, data.id, null, content.trim(), category?.trim() || 'general');
+  } catch (error) {
+    console.error('[Knowledge] Failed to create chunks for manual entry:', error);
+  }
+
   return NextResponse.json({ entry: data });
 }
 
 export async function PUT(request: NextRequest) {
   const result = await getUserAndWorkspace(request);
+  if (result.error === 'AuthServiceUnavailable') {
+    return NextResponse.json({ error: result.message }, { status: 502 });
+  }
   if (result.error) {
     return NextResponse.json({ error: result.error }, { status: 401 });
   }
 
-  const { supabase, workspaceId, userId } = result as any;
+  const { supabase, userId, workspaceId } = result;
   const body = await request.json();
   const { id, title, category, content, tags } = body || {};
 
@@ -199,16 +189,28 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: 'Entry not found' }, { status: 404 });
   }
 
+  if (content !== undefined) {
+    try {
+      await supabase.from('knowledge_chunks').delete().eq('knowledge_id', id);
+      await createKnowledgeChunks(supabase, id, null, content.trim(), category?.trim() || data.category);
+    } catch (error) {
+      console.error('[Knowledge] Failed to update chunks:', error);
+    }
+  }
+
   return NextResponse.json({ entry: data });
 }
 
 export async function DELETE(request: NextRequest) {
   const result = await getUserAndWorkspace(request);
+  if (result.error === 'AuthServiceUnavailable') {
+    return NextResponse.json({ error: result.message }, { status: 502 });
+  }
   if (result.error) {
     return NextResponse.json({ error: result.error }, { status: 401 });
   }
 
-  const { supabase, workspaceId } = result as any;
+  const { supabase, workspaceId } = result;
   const body = await request.json();
   const { id } = body || {};
 

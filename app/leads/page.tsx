@@ -1,12 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import SidebarNav from '@/components/sidebar-nav';
 import { MobileNav } from '@/components/mobile-nav';
 import { Target, Copy, Download, Send, Plus, X, Brain, Filter, ArrowUpRight, Globe, MapPin, Trash2 } from 'lucide-react';
 import { PageHeader, EmptyState, Section, Badge, Button, Input } from '@/components/ui';
 import { cn } from '@/lib/utils';
+
+export const dynamic = 'force-dynamic';
 
 type Lead = {
   id: string;
@@ -22,15 +25,17 @@ type Lead = {
   value?: number;
 };
 
-const industries = ['Restaurants', 'Law Firms', 'Schools', 'Churches', 'Construction', 'E-commerce', 'Healthcare', 'Finance', 'Real Estate', 'Technology'];
-const locations = ['Nigeria', 'Lagos', 'Abuja', 'London', 'United States', 'New York', 'California'];
-
-export default function LeadsPage() {
+function LeadsPageContent() {
+  const searchParams = useSearchParams();
   const router = useRouter();
+
+  const industries = ['Restaurants', 'Law Firms', 'Schools', 'Churches', 'Construction', 'E-commerce', 'Healthcare', 'Finance', 'Real Estate', 'Technology'];
+  const locations = ['Nigeria', 'Lagos', 'Abuja', 'London', 'United States', 'New York', 'California'];
+
   const [leads, setLeads] = useState<Lead[]>([]);
-  const [targetIndustry, setTargetIndustry] = useState('Restaurants');
-  const [targetLocation, setTargetLocation] = useState('Nigeria');
-  const [idealCustomer, setIdealCustomer] = useState('');
+  const [targetIndustry, setTargetIndustry] = useState(searchParams.get('industry') || 'Restaurants');
+  const [targetLocation, setTargetLocation] = useState(searchParams.get('location') || 'Nigeria');
+  const [idealCustomer, setIdealCustomer] = useState(searchParams.get('customer') || '');
   const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
@@ -155,9 +160,9 @@ export default function LeadsPage() {
             <form onSubmit={handleSearch} className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
               <div className="w-full sm:w-auto">
                 <label className="block text-xs font-medium text-text-muted mb-1.5">Industry</label>
-                <select
-                  value={targetIndustry}
-                  onChange={(e) => setTargetIndustry(e.target.value)}
+                   <select
+                     value={targetIndustry}
+                     onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setTargetIndustry(e.target.value)}
                   className="w-full rounded-xl border border-border/30 bg-background-secondary/30 px-3 py-2 text-sm text-text-heading outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
                 >
                   {industries.map((ind) => <option key={ind} value={ind}>{ind}</option>)}
@@ -167,7 +172,7 @@ export default function LeadsPage() {
                 <label className="block text-xs font-medium text-text-muted mb-1.5">Location</label>
                 <select
                   value={targetLocation}
-                  onChange={(e) => setTargetLocation(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setTargetLocation(e.target.value)}
                   className="w-full rounded-xl border border-border/30 bg-background-secondary/30 px-3 py-2 text-sm text-text-heading outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
                 >
                   {locations.map((loc) => <option key={loc} value={loc}>{loc}</option>)}
@@ -177,7 +182,7 @@ export default function LeadsPage() {
                 <label className="block text-xs font-medium text-text-muted mb-1.5">Ideal Customer Profile</label>
                 <Input
                   value={idealCustomer}
-                  onChange={(e) => setIdealCustomer(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setIdealCustomer(e.target.value)}
                   placeholder="Describe your ideal customer..."
                 />
               </div>
@@ -376,9 +381,9 @@ function LeadDetailModal({
             </Badge>
             <div className="flex-1">
               <label className="block text-xs font-medium text-text-muted mb-1.5">Status</label>
-              <select
-                value={lead.status}
-                onChange={(e) => onStatusChange(lead.id, e.target.value as Lead['status'])}
+                 <select
+                   value={lead.status}
+                   onChange={(e: React.ChangeEvent<HTMLSelectElement>) => onStatusChange(lead.id, e.target.value as Lead['status'])}
                 className="w-full rounded-xl border border-border/30 bg-background-secondary/30 px-3 py-2.5 text-sm text-text-heading outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
               >
                 <option>New</option>
@@ -415,5 +420,28 @@ function LeadDetailModal({
         </div>
       </div>
     </div>
+  );
+}
+
+function LeadsPageSkeleton() {
+  return (
+    <div className="min-h-screen bg-background">
+      <MobileNav />
+      <SidebarNav />
+      <main className="lg:pl-64 pt-14 lg:pt-0">
+        <div className="px-4 py-6 lg:px-8 lg:py-8">
+          <div className="h-6 w-48 animate-pulse rounded-lg bg-border/40 mb-3 lg:h-7 lg:w-56" />
+          <div className="h-4 w-64 animate-pulse rounded-lg bg-border/40 lg:h-5 lg:w-80" />
+        </div>
+      </main>
+    </div>
+  );
+}
+
+export default function LeadsPage() {
+  return (
+    <Suspense fallback={<LeadsPageSkeleton />}>
+      <LeadsPageContent />
+    </Suspense>
   );
 }

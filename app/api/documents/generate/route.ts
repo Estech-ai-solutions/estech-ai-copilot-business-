@@ -1,48 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
 import { generateAiResponse } from '@/lib/ai';
-
-async function getUserAndWorkspace(request: NextRequest) {
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-      },
-    }
-  );
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { error: 'Unauthorized', workspaceId: null };
-  }
-
-  const { data: workspace } = await supabase
-    .from('workspaces')
-    .select('id')
-    .eq('created_by', user.id)
-    .limit(1)
-    .single();
-
-  return { supabase, userId: user.id, workspaceId: workspace?.id || null };
-}
-
-async function getRelevantKnowledge(supabase: any, workspaceId: string, query: string, limit = 5) {
-  const { data: entries } = await supabase
-    .from('knowledge')
-    .select('title, category, content, tags')
-    .eq('workspace_id', workspaceId)
-    .or(`title.ilike.%${query}%,content.ilike.%${query}%`)
-    .limit(limit);
-
-  return entries || [];
-}
+import { retrieveRelevantKnowledge, buildKnowledgeContext } from '@/lib/knowledge/retrieval';
+import { getUserAndWorkspace } from '@/lib/auth-server';
 
 function buildDocumentPrompt(
   documentType: string,
@@ -84,12 +43,15 @@ const documentTypeInstructions: Record<string, string> = {
 
 export async function POST(request: NextRequest) {
   try {
-    const result = await getUserAndWorkspace(request);
-    if (result.error) {
-      return NextResponse.json({ error: result.error }, { status: 401 });
-    }
+  const result = await getUserAndWorkspace(request);
+  if (result.error === 'AuthServiceUnavailable') {
+    return NextResponse.json({ error: result.message }, { status: 502 });
+  }
+  if (result.error) {
+    return NextResponse.json({ error: result.error }, { status: 401 });
+  }
 
-    const { supabase, workspaceId, userId } = result as any;
+  const { supabase, userId, workspaceId } = result;
     const body = await request.json();
     const { documentType, userRequest, title } = body || {};
 
@@ -107,13 +69,11 @@ export async function POST(request: NextRequest) {
     let knowledgeContext = '';
 
     try {
-      const relevantKnowledge = await getRelevantKnowledge(supabase, workspaceId, userRequest, 5);
+      const knowledgeResults = await retrieveRelevantKnowledge(supabase, workspaceId, userRequest, { limit: 5 });
+      const knowledgeContextStr = buildKnowledgeContext(knowledgeResults);
 
-      if (relevantKnowledge.length > 0) {
-        knowledgeContext = 'Relevant Business Knowledge:\n';
-        relevantKnowledge.forEach((entry: any, index: number) => {
-          knowledgeContext += `${index + 1}. [${entry.category.toUpperCase()}] ${entry.title}\n${entry.content}\n\n`;
-        });
+      if (knowledgeContextStr) {
+        knowledgeContext = 'Relevant Business Knowledge:\n' + knowledgeContextStr;
       }
     } catch (error) {
       console.error('Failed to fetch knowledge context:', error);

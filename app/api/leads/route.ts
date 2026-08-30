@@ -1,47 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-
-async function getUserAndWorkspace(request: NextRequest) {
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-      },
-    }
-  );
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { error: 'Unauthorized', workspaceId: null };
-  }
-
-  const { data: workspace } = await supabase
-    .from('workspaces')
-    .select('id')
-    .eq('created_by', user.id)
-    .limit(1)
-    .single();
-
-  return { supabase, userId: user.id, workspaceId: workspace?.id || null };
-}
+import { getUserAndWorkspace } from '@/lib/auth-server';
 
 export async function GET(request: NextRequest) {
   const result = await getUserAndWorkspace(request);
+  if (result.error === 'AuthServiceUnavailable') {
+    return NextResponse.json({ error: result.message }, { status: 502 });
+  }
   if (result.error) {
-    return NextResponse.json({ leads: [] });
+    return NextResponse.json({ error: result.error }, { status: 401 });
   }
 
-  const { supabase, workspaceId } = result as any;
+  const { supabase, userId, workspaceId } = result;
 
   if (!workspaceId) {
-    return NextResponse.json({ leads: [] });
+    return NextResponse.json({ error: 'No workspace found' }, { status: 400 });
   }
 
   const { data: leads, error } = await supabase
@@ -59,17 +31,21 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const result = await getUserAndWorkspace(request);
+  if (result.error === 'AuthServiceUnavailable') {
+    return NextResponse.json({ error: result.message }, { status: 502 });
+  }
   if (result.error) {
     return NextResponse.json({ error: result.error }, { status: 401 });
   }
 
-  const { supabase, workspaceId } = result as any;
-  const body = await request.json();
-  const { business_name, contact_name, email, phone, website, location, address, city, state, industry, description, source_url, status, lead_score } = body || {};
+  const { supabase, userId, workspaceId } = result;
 
   if (!workspaceId) {
     return NextResponse.json({ error: 'No workspace found' }, { status: 400 });
   }
+
+  const body = await request.json();
+  const { business_name, contact_name, email, phone, website, location, address, city, state, industry, description, source_url, status, lead_score } = body || {};
 
   if (!business_name) {
     return NextResponse.json({ error: 'business_name is required' }, { status: 400 });
@@ -106,11 +82,14 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   const result = await getUserAndWorkspace(request);
+  if (result.error === 'AuthServiceUnavailable') {
+    return NextResponse.json({ error: result.message }, { status: 502 });
+  }
   if (result.error) {
     return NextResponse.json({ error: result.error }, { status: 401 });
   }
 
-  const { supabase, workspaceId } = result as any;
+  const { supabase, userId, workspaceId } = result;
   const body = await request.json();
   const { id, ...updates } = body;
 
@@ -139,11 +118,14 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   const result = await getUserAndWorkspace(request);
+  if (result.error === 'AuthServiceUnavailable') {
+    return NextResponse.json({ error: result.message }, { status: 502 });
+  }
   if (result.error) {
     return NextResponse.json({ error: result.error }, { status: 401 });
   }
 
-  const { supabase, workspaceId } = result as any;
+  const { supabase, workspaceId } = result;
   const { id } = await request.json();
 
   if (!id) {

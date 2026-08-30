@@ -349,9 +349,9 @@ export default function ContentPage() {
               <div className="space-y-4 lg:space-y-5">
                 <div>
                   <label className="block text-xs font-medium text-text-heading mb-2">Content Type</label>
-                  <select
-                    value={contentType}
-                    onChange={(e) => setContentType(e.target.value as ContentType)}
+                   <select
+                     value={contentType}
+                     onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setContentType(e.target.value as ContentType)}
                     className="w-full rounded-xl border border-border/60 bg-background-secondary/60 px-3 py-2.5 text-sm text-text-heading outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
                   >
                     {contentTypes.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
@@ -362,7 +362,7 @@ export default function ContentPage() {
                   <label className="block text-xs font-medium text-text-heading mb-2">Business Goal</label>
                   <Input
                     value={goal}
-                    onChange={(e) => setGoal(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setGoal(e.target.value)}
                     placeholder="Promote new product, Get more customers..."
                   />
                 </div>
@@ -371,7 +371,7 @@ export default function ContentPage() {
                   <label className="block text-xs font-medium text-text-heading mb-2">Target Audience</label>
                   <Input
                     value={audience}
-                    onChange={(e) => setAudience(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAudience(e.target.value)}
                     placeholder="Small businesses, Restaurant owners..."
                   />
                 </div>
@@ -380,7 +380,7 @@ export default function ContentPage() {
                   <label className="block text-xs font-medium text-text-heading mb-2">Extra Instructions</label>
                   <TextArea
                     value={instructions}
-                    onChange={(e) => setInstructions(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInstructions(e.target.value)}
                     placeholder="Any specific requirements, tone, or details..."
                     rows={4}
                   />
@@ -491,16 +491,16 @@ export default function ContentPage() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
                     <Input
                       value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
                       placeholder="Search content..."
                       className="pl-9"
                     />
                   </div>
                 </div>
                 <div className="w-full sm:w-auto">
-                  <select
-                    value={filterType}
-                    onChange={(e) => setFilterType(e.target.value)}
+                   <select
+                     value={filterType}
+                     onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterType(e.target.value)}
                     className="w-full rounded-xl border border-border/30 bg-background-secondary/30 px-3 py-2 text-sm text-text-heading outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
                   >
                     <option value="">All types</option>

@@ -1,36 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-
-async function getUserAndWorkspace(request: NextRequest) {
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-      },
-    }
-  );
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { error: 'Unauthorized', workspaceId: null };
-  }
-
-  const { data: workspace } = await supabase
-    .from('workspaces')
-    .select('id')
-    .eq('created_by', user.id)
-    .limit(1)
-    .single();
-
-  return { supabase, workspaceId: workspace?.id || null };
-}
+import { getUserAndWorkspace } from '@/lib/auth-server';
 
 function getDateRange(range: string) {
   const now = new Date();
@@ -53,11 +22,14 @@ function getDateRange(range: string) {
 
 export async function GET(request: NextRequest) {
   const result = await getUserAndWorkspace(request);
+  if (result.error === 'AuthServiceUnavailable') {
+    return NextResponse.json({ error: result.message }, { status: 502 });
+  }
   if (result.error) {
     return NextResponse.json({ error: result.error }, { status: 401 });
   }
 
-  const { supabase, workspaceId } = result as any;
+  const { supabase, userId, workspaceId } = result;
   const { searchParams } = new URL(request.url);
   const range = searchParams.get('range') || '30d';
   const startDate = getDateRange(range);

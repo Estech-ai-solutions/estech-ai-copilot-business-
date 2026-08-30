@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import SidebarNav from '@/components/sidebar-nav';
 import { MobileNav } from '@/components/mobile-nav';
 import {
@@ -11,6 +12,8 @@ import {
 import { PageHeader, EmptyState, Section, Badge, Button, Input, TextArea } from '@/components/ui';
 import { useSupabaseContext } from '@/providers/supabase-provider';
 import { cn } from '@/lib/utils';
+
+export const dynamic = 'force-dynamic';
 
 type Document = {
   id: string;
@@ -51,17 +54,19 @@ const quickActions: { value: DocAction; label: string; prompt: string }[] = [
   { value: 'translate', label: 'Translate', prompt: 'Translate this document to English. Preserve the formal business tone and all key information.' },
 ];
 
-export default function DocumentsPage() {
+function DocumentsPageInner() {
   const { user } = useSupabaseContext();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const [docType, setDocType] = useState<typeof documentTypes[number]['value']>('quote');
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
+  const [docType, setDocType] = useState<typeof documentTypes[number]['value']>(searchParams.get('type') as any || 'quote');
+  const [title, setTitle] = useState(searchParams.get('title') || '');
+  const [content, setContent] = useState(searchParams.get('content') || '');
   const [status, setStatus] = useState<'draft' | 'completed'>('draft');
   const [generating, setGenerating] = useState(false);
 
@@ -355,9 +360,9 @@ export default function DocumentsPage() {
               <div className="space-y-4 lg:space-y-5">
                 <div>
                   <label className="block text-xs font-medium text-text-heading mb-2">Document Type</label>
-                  <select
-                    value={docType}
-                    onChange={(e) => setDocType(e.target.value as typeof documentTypes[number]['value'])}
+                   <select
+                     value={docType}
+                     onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setDocType(e.target.value as typeof documentTypes[number]['value'])}
                     className="w-full rounded-xl border border-border/60 bg-background-secondary/60 px-3 py-2.5 text-sm text-text-heading outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
                   >
                     {documentTypes.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
@@ -368,7 +373,7 @@ export default function DocumentsPage() {
                   <label className="block text-xs font-medium text-text-heading mb-2">Title</label>
                   <Input
                     value={title}
-                    onChange={(e) => setTitle(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
                     placeholder="Document title..."
                   />
                 </div>
@@ -379,7 +384,7 @@ export default function DocumentsPage() {
                   </label>
                   <TextArea
                     value={content}
-                    onChange={(e) => setContent(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setContent(e.target.value)}
                     placeholder={isEditing ? 'Document content...' : 'Describe what you need...'}
                     rows={isEditing ? 8 : 4}
                   />
@@ -491,28 +496,28 @@ export default function DocumentsPage() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
                     <Input
                       value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
                       placeholder="Search documents..."
                       className="pl-9"
                     />
                   </div>
                 </div>
                 <div className="w-full sm:w-auto">
-                  <select
-                    value={filterType}
-                    onChange={(e) => setFilterType(e.target.value)}
-                    className="w-full rounded-xl border border-border/30 bg-background-secondary/30 px-3 py-2 text-sm text-text-heading outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
-                  >
-                    <option value="">All types</option>
-                    {documentTypes.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                  </select>
-                </div>
-                <div className="w-full sm:w-auto">
-                  <select
-                    value={filterStatus}
-                    onChange={(e) => setFilterStatus(e.target.value)}
-                    className="w-full rounded-xl border border-border/30 bg-background-secondary/30 px-3 py-2 text-sm text-text-heading outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
-                  >
+                   <select
+                     value={filterType}
+                     onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterType(e.target.value)}
+                     className="w-full rounded-xl border border-border/30 bg-background-secondary/30 px-3 py-2 text-sm text-text-heading outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
+                   >
+                     <option value="">All types</option>
+                     {documentTypes.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                   </select>
+                 </div>
+                 <div className="w-full sm:w-auto">
+                   <select
+                     value={filterStatus}
+                     onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterStatus(e.target.value)}
+                     className="w-full rounded-xl border border-border/30 bg-background-secondary/30 px-3 py-2 text-sm text-text-heading outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
+                   >
                     <option value="">All statuses</option>
                     {statuses.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
                   </select>
@@ -612,5 +617,28 @@ export default function DocumentsPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+function DocumentsPageSkeleton() {
+  return (
+    <div className="min-h-screen bg-background">
+      <MobileNav />
+      <SidebarNav />
+      <main className="lg:pl-64 pt-14 lg:pt-0">
+        <div className="px-4 py-6 lg:px-8 lg:py-8">
+          <div className="h-6 w-48 animate-pulse rounded-lg bg-border/40 mb-3 lg:h-7 lg:w-56" />
+          <div className="h-4 w-64 animate-pulse rounded-lg bg-border/40 lg:h-5 lg:w-80" />
+        </div>
+      </main>
+    </div>
+  );
+}
+
+export default function DocumentsPage() {
+  return (
+    <Suspense fallback={<DocumentsPageSkeleton />}>
+      <DocumentsPageInner />
+    </Suspense>
   );
 }

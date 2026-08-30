@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useSupabaseContext } from '@/providers/supabase-provider';
 import { 
   LayoutDashboard, Target, MessageSquare, FileText, Brain, Bot, 
   BarChart3, Settings, LogOut, Menu, X, CheckSquare, Megaphone, User 
@@ -10,9 +11,9 @@ import {
 
 const navigationItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/leads', icon: Target, label: 'Lead Intelligence' },
-  { href: '/responses', icon: MessageSquare, label: 'Communication Studio' },
-  { href: '/documents', icon: FileText, label: 'Document Studio' },
+  { href: '/leads', icon: Target, label: 'Leads' },
+  { href: '/responses', icon: MessageSquare, label: 'Messages' },
+  { href: '/documents', icon: FileText, label: 'Documents' },
   { href: '/knowledge', icon: Brain, label: 'Business Brain' },
   { href: '/tasks', icon: CheckSquare, label: 'Tasks' },
   { href: '/content', icon: Megaphone, label: 'Content Studio' },
@@ -25,21 +26,10 @@ const navigationItems = [
 export function MobileNav() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const { user, signOut } = useSupabaseContext();
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const token = window.localStorage.getItem('authToken');
-    if (token) {
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        setUser({ ...payload });
-      } catch {}
-    }
-  }, []);
-
-  function handleSignOut() {
-    window.localStorage.removeItem('authToken');
+  async function handleSignOut() {
+    await signOut();
     window.location.href = '/';
   }
 

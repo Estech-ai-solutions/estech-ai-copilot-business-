@@ -1,10 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useSupabaseContext } from '@/providers/supabase-provider';
 import { Bot, LogOut } from 'lucide-react';
-
-type User = { id: number; email: string; name?: string };
 
 const authenticatedNavItems = [
   { label: 'Control Center', href: '/dashboard' },
@@ -16,25 +14,10 @@ const authenticatedNavItems = [
 ];
 
 export default function SiteNav() {
-  const [user, setUser] = useState<User | null>(null);
+  const { user, signOut } = useSupabaseContext();
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const token = window.localStorage.getItem('authToken');
-    if (token) {
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        setUser({ id: payload.userId, email: payload.email, name: payload.name });
-      } catch {
-        setUser(null);
-      }
-    }
-  }, []);
-
-  function handleSignOut() {
-    window.localStorage.removeItem('authToken');
-    setUser(null);
+  async function handleSignOut() {
+    await signOut();
     window.location.href = '/';
   }
 
@@ -62,7 +45,7 @@ export default function SiteNav() {
               ))}
               <div className="flex items-center gap-3 pl-4 border-l border-border/40">
                 <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/20 text-xs font-medium text-primary">
-                  {user.name?.[0] || user.email[0].toUpperCase()}
+                  {(user as any)?.name?.[0] || user?.email?.[0]?.toUpperCase()}
                 </div>
                 <button
                   onClick={handleSignOut}

@@ -33,8 +33,16 @@ export default function LoginPage() {
         } else {
           setError(error.message);
         }
-      } else if (data.user) {
-        router.push('/dashboard');
+      } else       if (data.user) {
+        // Check onboarding status
+        const onboardingRes = await fetch('/api/onboarding/status');
+        const onboardingJson = await onboardingRes.json();
+        
+        if (!onboardingJson.completed) {
+          router.push('/onboarding');
+        } else {
+          router.push('/dashboard');
+        }
         router.refresh();
       }
     } catch (err: any) {
@@ -96,7 +104,7 @@ export default function LoginPage() {
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
                 placeholder="you@example.com"
                 required
                 disabled={loading}
@@ -112,7 +120,7 @@ export default function LoginPage() {
               <input
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                 placeholder="Your password"
                 required
                 disabled={loading}

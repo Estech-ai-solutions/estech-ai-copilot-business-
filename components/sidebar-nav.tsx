@@ -4,19 +4,44 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, Target, MessageSquare, FileText, Brain, Megaphone, Bot, BarChart3, Settings, LogOut, CheckSquare, User } from 'lucide-react';
+import { useSupabaseContext } from '@/providers/supabase-provider';
 
-const navigationItems = [
-  { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/leads', icon: Target, label: 'Lead Intelligence' },
-  { href: '/responses', icon: MessageSquare, label: 'Communication Studio' },
-  { href: '/documents', icon: FileText, label: 'Document Studio' },
-  { href: '/knowledge', icon: Brain, label: 'Business Brain' },
-  { href: '/tasks', icon: CheckSquare, label: 'Tasks' },
-  { href: '/content', icon: Megaphone, label: 'Content Studio' },
-  { href: '/analytics', icon: BarChart3, label: 'Analytics' },
-  { href: '/assistant', icon: Bot, label: 'AI Copilot' },
-  { href: '/settings', icon: Settings, label: 'Settings' },
-  { href: '/profile', icon: User, label: 'Profile' },
+const navigationSections = [
+  {
+    title: 'Home',
+    items: [
+      { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    ]
+  },
+  {
+    title: 'Customers & Sales',
+    items: [
+      { href: '/leads', icon: Target, label: 'Leads' },
+      { href: '/responses', icon: MessageSquare, label: 'Messages' },
+      { href: '/documents', icon: FileText, label: 'Documents' },
+      { href: '/tasks', icon: CheckSquareIcon, label: 'Tasks' },
+    ]
+  },
+  {
+    title: 'Business',
+    items: [
+      { href: '/knowledge', icon: Brain, label: 'Business Brain' },
+    ]
+  },
+  {
+    title: 'Insights',
+    items: [
+      { href: '/analytics', icon: BarChart3, label: 'Analytics' },
+    ]
+  },
+  {
+    title: 'More',
+    items: [
+      { href: '/assistant', icon: Bot, label: 'AI Copilot' },
+      { href: '/settings', icon: Settings, label: 'Settings' },
+      { href: '/profile', icon: User, label: 'Profile' },
+    ]
+  },
 ];
 
 function CheckSquareIcon({ className }: { className?: string }) {
@@ -30,22 +55,11 @@ function CheckSquareIcon({ className }: { className?: string }) {
 
 export default function SidebarNav() {
   const pathname = usePathname();
-  const [user, setUser] = useState<any>(null);
+  const { user, signOut } = useSupabaseContext();
   const [collapsed, setCollapsed] = useState(false);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const token = window.localStorage.getItem('authToken');
-    if (token) {
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        setUser({ ...payload });
-      } catch {}
-    }
-  }, []);
-
-  function handleSignOut() {
-    window.localStorage.removeItem('authToken');
+  async function handleSignOut() {
+    await signOut();
     window.location.href = '/';
   }
 
@@ -70,41 +84,52 @@ export default function SidebarNav() {
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-4">
-          {navigationItems.map((item) => (
-            <div key={item.href} className="mb-1 last:mb-0">
-              <Link
-                href={item.href}
-                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
-                  isActive(item.href)
-                    ? 'bg-primary/15 text-primary'
-                    : 'text-text-muted hover:bg-surface/60 hover:text-text-heading'
-                }`}
-                title={collapsed ? item.label : undefined}
-              >
-                <item.icon className="h-5 w-5 shrink-0" />
-                {!collapsed && <span>{item.label}</span>}
-                {isActive(item.href) && !collapsed && (
-                  <div className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
-                )}
-              </Link>
+          {navigationSections.map((section) => (
+            <div key={section.title} className="mb-4 last:mb-0">
+              {!collapsed && (
+                <p className="px-3 mb-2 text-[0.65rem] font-semibold uppercase tracking-wider text-text-muted/70">
+                  {section.title}
+                </p>
+              )}
+              <div className="space-y-1">
+                {section.items.map((item) => (
+                  <div key={item.href}>
+                    <Link
+                      href={item.href}
+                      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
+                        isActive(item.href)
+                          ? 'bg-primary/15 text-primary'
+                          : 'text-text-muted hover:bg-surface/60 hover:text-text-heading'
+                      }`}
+                      title={collapsed ? item.label : undefined}
+                    >
+                      <item.icon className="h-5 w-5 shrink-0" />
+                      {!collapsed && <span>{item.label}</span>}
+                      {isActive(item.href) && !collapsed && (
+                        <div className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
+                      )}
+                    </Link>
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         </nav>
 
         {user && (
           <div className="border-t border-border/40 p-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/15 text-sm font-medium text-primary shrink-0">
-                {user.name?.[0] || user.email?.[0]?.toUpperCase() || 'U'}
-              </div>
-              {!collapsed && (
-                <div className="flex-1 min-w-0">
-                  <p className="truncate text-sm font-medium text-text-heading">
-                    {user.name || user.email}
-                  </p>
-                  <p className="truncate text-[0.7rem] text-text-muted">Workspace</p>
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/15 text-sm font-medium text-primary shrink-0">
+                  {(user as any)?.name?.[0] || user?.email?.[0]?.toUpperCase() || 'U'}
                 </div>
-              )}
+                {!collapsed && (
+                  <div className="flex-1 min-w-0">
+                    <p className="truncate text-sm font-medium text-text-heading">
+                      {(user as any)?.name || user?.email}
+                    </p>
+                    <p className="truncate text-[0.7rem] text-text-muted">Workspace</p>
+                  </div>
+                )}
               {!collapsed && (
                 <button
                   onClick={handleSignOut}

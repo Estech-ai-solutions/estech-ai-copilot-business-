@@ -259,7 +259,7 @@ export default function ProfilePage() {
                   <label className="block text-xs font-medium text-text-heading mb-2">Full Name</label>
                   <Input
                     value={profile.full_name ?? ''}
-                    onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setProfile({ ...profile, full_name: e.target.value })}
                     placeholder="Your full name"
                     disabled={!isEditing}
                   />
@@ -277,7 +277,7 @@ export default function ProfilePage() {
                   <label className="block text-xs font-medium text-text-heading mb-2">Phone Number</label>
                   <Input
                     value={profile.phone ?? ''}
-                    onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setProfile({ ...profile, phone: e.target.value })}
                     placeholder="+1 (555) 000-0000"
                     disabled={!isEditing}
                   />
@@ -286,7 +286,7 @@ export default function ProfilePage() {
                   <label className="block text-xs font-medium text-text-heading mb-2">Job Title</label>
                   <Input
                     value={profile.job_title ?? ''}
-                    onChange={(e) => setProfile({ ...profile, job_title: e.target.value })}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setProfile({ ...profile, job_title: e.target.value })}
                     placeholder="e.g. Marketing Manager"
                     disabled={!isEditing}
                   />
@@ -297,7 +297,7 @@ export default function ProfilePage() {
                 <label className="block text-xs font-medium text-text-heading mb-2">Bio</label>
                 <TextArea
                   value={profile.bio ?? ''}
-                  onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setProfile({ ...profile, bio: e.target.value })}
                   rows={3}
                   placeholder="Tell us about yourself..."
                   disabled={!isEditing}
@@ -363,7 +363,7 @@ export default function ProfilePage() {
                   <Input
                     type="password"
                     value={passwordData.newPassword}
-                    onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
                     placeholder="Enter new password"
                     disabled={changingPassword}
                   />
@@ -373,7 +373,7 @@ export default function ProfilePage() {
                   <Input
                     type="password"
                     value={passwordData.confirm}
-                    onChange={(e) => setPasswordData({ ...passwordData, confirm: e.target.value })}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPasswordData({ ...passwordData, confirm: e.target.value })}
                     placeholder="Confirm new password"
                     disabled={changingPassword}
                   />

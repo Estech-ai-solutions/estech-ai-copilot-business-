@@ -1,6 +1,7 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import React, { forwardRef } from 'react';
+import type { ReactNode, ForwardedRef } from 'react';
 import { cn, formatResponseText } from '@/lib/utils';
 import { AlertCircle, CheckCircle2, XCircle, Info, Loader2 } from 'lucide-react';
 
@@ -43,7 +44,7 @@ export function EmptyState({
 }: { 
   icon?: any;
   title: string; 
-  description?: string; 
+  description?: string;
   action?: ReactNode;
   className?: string;
 }) {
@@ -76,7 +77,7 @@ export function Card({
 }) {
   return (
     <div className={cn(
-      'bg-surface/70 backdrop-blur-xl border border-border/30 rounded-2xl',
+      'bg-surface/70 backdrop:blur-xl border border-border/30 rounded-2xl',
       elevated ? 'shadow-[0_4px_20px_rgba(0,0,0,0.15)]' : 'shadow-sm',
       hover && 'transition-all duration-300 hover:bg-surface/90 hover:border-border/50 hover:shadow-lg',
       className
@@ -271,23 +272,22 @@ export function Button({
   );
 }
 
-export function Input({ 
-  value, 
-  onChange, 
-  placeholder, 
-  type = 'text',
-  className,
-  ...props 
-}: { 
+interface InputProps {
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   placeholder?: string;
   type?: string;
   className?: string;
   [key: string]: any;
-}) {
+}
+
+export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
+  { value, onChange, placeholder, type = 'text', className, ...props },
+  ref
+) {
   return (
     <input
+      ref={ref}
       type={type}
       value={value}
       onChange={onChange}
@@ -299,17 +299,9 @@ export function Input({
       {...props}
     />
   );
-}
+});
 
-export function TextArea({ 
-  value, 
-  onChange, 
-  placeholder,
-  rows = 4,
-  className,
-  readOnly = false,
-  ...props 
-}: { 
+interface TextAreaProps {
   value: string;
   onChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   placeholder?: string;
@@ -317,9 +309,15 @@ export function TextArea({
   className?: string;
   readOnly?: boolean;
   [key: string]: any;
-}) {
+}
+
+export const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>(function TextArea(
+  { value, onChange, placeholder, rows = 4, className, readOnly = false, ...props },
+  ref
+) {
   return (
     <textarea
+      ref={ref}
       value={value}
       onChange={onChange}
       placeholder={placeholder}
@@ -332,7 +330,7 @@ export function TextArea({
       {...props}
     />
   );
-}
+});
 
 export function Select({ 
   value, 

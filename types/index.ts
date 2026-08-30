@@ -33,6 +33,14 @@ export type Knowledge = {
   updated_at: string;
   created_by: string;
   updated_by?: string;
+  source_type?: 'manual' | 'upload' | 'onboarding';
+  source_path?: string | null;
+  original_filename?: string | null;
+  content_type?: string | null;
+  file_size?: number | null;
+  processing_status?: 'pending' | 'processing' | 'ready' | 'failed';
+  version?: number;
+  parent_id?: string | null;
 };
 
 export type Task = {
@@ -133,6 +141,31 @@ export type Message = {
   conversation_id: string;
   role: 'user' | 'assistant';
   content: string;
+  created_at: string;
+};
+
+export type KnowledgeSource = {
+  id: string;
+  user_id: string;
+  original_filename: string;
+  content_type?: string | null;
+  file_size?: number | null;
+  storage_path?: string | null;
+  processing_status: 'pending' | 'processing' | 'ready' | 'failed';
+  metadata?: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type KnowledgeChunk = {
+  id: string;
+  knowledge_id: string;
+  source_id?: string | null;
+  chunk_index: number;
+  chunk_count: number;
+  content: string;
+  embedding?: number[] | null;
+  metadata?: Record<string, any>;
   created_at: string;
 };
 

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import SidebarNav from '@/components/sidebar-nav';
 import { MobileNav } from '@/components/mobile-nav';
-import { Brain, Plus, Trash2, Edit3, X, Tag, BookOpen, FileText, Search, Upload, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Brain, Plus, Trash2, Edit3, X, Tag, BookOpen, FileText, Search, Upload, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { PageHeader, EmptyState, Section, Badge, Button, Input, TextArea } from '@/components/ui';
 
 const categories = [
@@ -15,6 +15,12 @@ const categories = [
   { value: 'general', label: 'General', icon: Brain },
 ] as const;
 
+const sourceTypeConfig: Record<string, { label: string; variant: 'outline' | 'default' | 'warning' }> = {
+  manual: { label: 'Manual', variant: 'outline' },
+  upload: { label: 'Upload', variant: 'default' },
+  onboarding: { label: 'Onboarding', variant: 'warning' },
+};
+
 type KnowledgeEntry = {
   id: string;
   title: string;
@@ -23,6 +29,10 @@ type KnowledgeEntry = {
   tags: string[];
   created_at: string;
   updated_at: string;
+  source_type: string;
+  original_filename?: string;
+  source_id?: string;
+  processing_status?: string;
 };
 
 export default function KnowledgePage() {
@@ -228,6 +238,8 @@ export default function KnowledgePage() {
     loadEntries();
   }
 
+  const processingEntries = entries.filter((e) => e.processing_status && e.processing_status !== 'ready');
+
   return (
     <div className="min-h-screen bg-background">
       <MobileNav />
@@ -251,6 +263,17 @@ export default function KnowledgePage() {
             </div>
           )}
 
+          {processingEntries.length > 0 && (
+            <div className="mb-4 flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
+              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              <p className="text-sm text-primary">
+                {processingEntries.length === 1
+                  ? '1 entry is being processed...'
+                  : `${processingEntries.length} entries are being processed...`}
+              </p>
+            </div>
+          )}
+
           <Section title="Search & Filter" className="mb-6">
             <form onSubmit={handleSearch} className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
               <div className="flex-1 min-w-0 sm:min-w-60">
@@ -259,7 +282,7 @@ export default function KnowledgePage() {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
                   <Input
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
                     placeholder="Search knowledge..."
                     className="pl-9"
                   />
@@ -267,9 +290,9 @@ export default function KnowledgePage() {
               </div>
               <div className="w-full sm:w-auto">
                 <label className="block text-xs font-medium text-text-muted mb-1.5">Category</label>
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => { setSelectedCategory(e.target.value); setPage(1); }}
+                   <select
+                     value={selectedCategory}
+                     onChange={(e: React.ChangeEvent<HTMLSelectElement>) => { setSelectedCategory(e.target.value); setPage(1); }}
                   className="w-full rounded-xl border border-border/30 bg-background-secondary/30 px-3 py-2 text-sm text-text-heading outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
                 >
                   <option value="">All categories</option>
@@ -293,58 +316,82 @@ export default function KnowledgePage() {
             ) : (
               <>
                 <div className="space-y-3">
-                  {entries.map((entry) => (
-                    <div
-                      key={entry.id}
-                      className="group rounded-xl border border-border/40 bg-background-secondary/40 p-4 transition-all duration-200 hover:bg-surface/60"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-2">
-                            {categories.find((c) => c.value === entry.category)?.icon && (
-                              (() => {
-                                const Icon = categories.find((c) => c.value === entry.category)!.icon;
-                                return <Icon className="h-4 w-4 text-primary" />;
-                              })()
-                            )}
-                            <h3 className="font-medium text-text-heading truncate">{entry.title}</h3>
-                          </div>
-                          <p className="text-xs text-text-muted line-clamp-2 leading-5 mb-3">{entry.content}</p>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Badge variant="outline" className="text-xs capitalize">
-                              {entry.category}
-                            </Badge>
-                            {entry.tags?.map((tag) => (
-                              <Badge key={tag} variant="default" className="text-xs">
-                                {tag}
+                  {entries.map((entry) => {
+                    const isProcessing = entry.processing_status && entry.processing_status !== 'ready';
+                    const sourceConfig = sourceTypeConfig[entry.source_type] || sourceTypeConfig.manual;
+
+                    return (
+                      <div
+                        key={entry.id}
+                        className={`group rounded-xl border p-4 transition-all duration-200 ${
+                          isProcessing
+                            ? 'border-primary/30 bg-primary/5'
+                            : 'border-border/40 bg-background-secondary/40 hover:bg-surface/60'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-2 flex-wrap">
+                              {categories.find((c) => c.value === entry.category)?.icon && (
+                                (() => {
+                                  const Icon = categories.find((c) => c.value === entry.category)!.icon;
+                                  return <Icon className="h-4 w-4 text-primary flex-shrink-0" />;
+                                })()
+                              )}
+                              <h3 className="font-medium text-text-heading truncate">{entry.title}</h3>
+                              {isProcessing && (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                  Processing...
+                                </span>
+                              )}
+                              <Badge variant={sourceConfig.variant} className="text-xs">
+                                {sourceConfig.label}
                               </Badge>
-                            ))}
+                            </div>
+                            <p className="text-xs text-text-muted line-clamp-2 leading-5 mb-3">{entry.content}</p>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Badge variant="outline" className="text-xs capitalize">
+                                {entry.category}
+                              </Badge>
+                              {entry.original_filename && (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-surface/80 px-2 py-0.5 text-xs text-text-muted">
+                                  <FileText className="h-3 w-3" />
+                                  {entry.original_filename}
+                                </span>
+                              )}
+                              {entry.tags?.map((tag) => (
+                                <Badge key={tag} variant="default" className="text-xs">
+                                  {tag}
+                                </Badge>
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
-                          <button
-                            onClick={() => openEdit(entry)}
-                            className="rounded-lg p-1.5 text-text-muted hover:text-primary transition"
-                            title="Edit entry"
-                          >
-                            <Edit3 className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(entry.id)}
-                            className="rounded-lg p-1.5 text-text-muted hover:text-danger transition"
-                            title="Delete entry"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2 flex-shrink-0">
+                            <button
+                              onClick={() => openEdit(entry)}
+                              className="rounded-lg p-1.5 text-text-muted hover:text-primary transition"
+                              title="Edit entry"
+                            >
+                              <Edit3 className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(entry.id)}
+                              className="rounded-lg p-1.5 text-text-muted hover:text-danger transition"
+                              title="Delete entry"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {entries.length === 0 && !loading && (
                     <EmptyState
                       icon={Brain}
-                      title="No knowledge entries yet"
-                      description="Add your business context to improve AI responses"
+                      title="Your Business Brain is empty"
+                      description="Add your products, pricing, FAQs, policies, or documents so Estech can give better answers."
                       action={
                         <Button variant="primary" onClick={() => { resetForm(); setShowAdd(true); }} className="w-full sm:w-auto">
                           <Plus className="h-4 w-4" />
@@ -405,7 +452,7 @@ export default function KnowledgePage() {
                 <label className="block text-xs font-medium text-text-heading mb-2">Category</label>
                 <select
                   value={formCategory}
-                  onChange={(e) => setFormCategory(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFormCategory(e.target.value)}
                   className="w-full rounded-xl border border-border/60 bg-background-secondary/60 px-3 py-2.5 text-sm text-text-heading outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
                 >
                   {categories.map((cat) => <option key={cat.value} value={cat.value}>{cat.label}</option>)}
@@ -415,7 +462,7 @@ export default function KnowledgePage() {
                 <label className="block text-xs font-medium text-text-heading mb-2">Title</label>
                 <Input
                   value={formTitle}
-                  onChange={(e) => setFormTitle(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormTitle(e.target.value)}
                   placeholder="Entry title..."
                 />
               </div>
@@ -423,7 +470,7 @@ export default function KnowledgePage() {
                 <label className="block text-xs font-medium text-text-heading mb-2">Content</label>
                 <TextArea
                   value={formContent}
-                  onChange={(e) => setFormContent(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormContent(e.target.value)}
                   placeholder="Entry content..."
                   rows={4}
                 />
@@ -432,7 +479,7 @@ export default function KnowledgePage() {
                 <label className="block text-xs font-medium text-text-heading mb-2">Tags (comma-separated)</label>
                 <Input
                   value={formTags}
-                  onChange={(e) => setFormTags(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormTags(e.target.value)}
                   placeholder="e.g. pricing, enterprise, q1-2024"
                 />
               </div>
@@ -496,7 +543,7 @@ export default function KnowledgePage() {
                 <label className="block text-xs font-medium text-text-heading mb-2">Category</label>
                 <select
                   value={formCategory}
-                  onChange={(e) => setFormCategory(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFormCategory(e.target.value)}
                   className="w-full rounded-xl border border-border/60 bg-background-secondary/60 px-3 py-2.5 text-sm text-text-heading outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
                 >
                   {categories.map((cat) => <option key={cat.value} value={cat.value}>{cat.label}</option>)}
@@ -506,7 +553,7 @@ export default function KnowledgePage() {
                 <label className="block text-xs font-medium text-text-heading mb-2">Title</label>
                 <Input
                   value={formTitle}
-                  onChange={(e) => setFormTitle(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormTitle(e.target.value)}
                   placeholder="Entry title..."
                 />
               </div>
@@ -514,7 +561,7 @@ export default function KnowledgePage() {
                 <label className="block text-xs font-medium text-text-heading mb-2">Content</label>
                 <TextArea
                   value={formContent}
-                  onChange={(e) => setFormContent(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormContent(e.target.value)}
                   placeholder="Entry content..."
                   rows={4}
                 />
@@ -523,7 +570,7 @@ export default function KnowledgePage() {
                 <label className="block text-xs font-medium text-text-heading mb-2">Tags (comma-separated)</label>
                 <Input
                   value={formTags}
-                  onChange={(e) => setFormTags(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormTags(e.target.value)}
                   placeholder="e.g. pricing, enterprise, q1-2024"
                 />
               </div>

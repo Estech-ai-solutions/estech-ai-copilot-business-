@@ -32,9 +32,9 @@ export default function RegisterPage() {
 
       if (error) {
         setError(error.message);
-      } else if (data.user) {
-        setMessage('Account created! Redirecting to sign in...');
-        setTimeout(() => router.push('/login'), 2000);
+      } else       if (data.user) {
+        setMessage('Account created! Redirecting to setup...');
+        setTimeout(() => router.push('/onboarding'), 1500);
       }
     } catch (err: any) {
       setError(err.message || 'Registration failed');
@@ -77,7 +77,7 @@ export default function RegisterPage() {
               <input
                 type="text"
                 value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFullName(e.target.value)}
                 placeholder="Jane Doe"
                 required
                 disabled={loading}
@@ -93,7 +93,7 @@ export default function RegisterPage() {
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
                 placeholder="you@example.com"
                 required
                 disabled={loading}
@@ -109,7 +109,7 @@ export default function RegisterPage() {
               <input
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                 placeholder="Minimum 6 characters"
                 required
                 minLength={6}

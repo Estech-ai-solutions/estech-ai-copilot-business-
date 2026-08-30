@@ -1,13 +1,16 @@
 'use client';
 
-import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import SidebarNav from '@/components/sidebar-nav';
 import { MobileNav } from '@/components/mobile-nav';
-import { MessageSquare, FileText, Brain, CheckSquare, Target, Plus, TrendingUp, ArrowUpRight } from 'lucide-react';
-import { PageHeader, StatCard, Section, Badge } from '@/components/ui';
-import { supabase } from '@/lib/supabase';
+import {
+  Bot, Send, TrendingUp, Target, FileText, CheckSquare, Brain,
+  Loader2, ArrowUpRight, Sparkles, ChevronRight
+} from 'lucide-react';
+import { PageHeader, StatCard, Section, Badge, Button, Input, Alert } from '@/components/ui';
 import { useSupabaseContext } from '@/providers/supabase-provider';
+import { supabase } from '@/lib/supabase';
 
 type Lead = {
   id: string;
@@ -25,6 +28,7 @@ type Task = {
   id: string;
   title: string;
   status: string;
+  due_date: string | null;
 };
 
 type Document = {
@@ -33,13 +37,40 @@ type Document = {
   type: string;
 };
 
+type Recommendation = {
+  id: string;
+  type: 'leads_without_outreach' | 'follow_ups_due' | 'new_documents' | 'knowledge_gaps';
+  title: string;
+  description: string;
+  action: string;
+  href: string;
+  count?: number;
+};
+
+type AiSuggestion = {
+  message: string;
+  intent: string;
+  action?: {
+    type: string;
+    href: string;
+    params?: Record<string, string>;
+    label: string;
+  };
+};
+
 export default function DashboardPage() {
-  const { user, loading: authLoading } = useSupabaseContext();
+  const { user, loading: authLoading, workspace } = useSupabaseContext();
+  const router = useRouter();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [knowledge, setKnowledge] = useState<KnowledgeEntry[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
+  const [aiInput, setAiInput] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiSuggestion, setAiSuggestion] = useState<AiSuggestion | null>(null);
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [businessName, setBusinessName] = useState<string>('');
 
   useEffect(() => {
     if (!user) {
@@ -48,43 +79,139 @@ export default function DashboardPage() {
     }
 
     const fetchData = async () => {
-      const { data: workspace } = await supabase
-        .from('workspaces')
-        .select('id')
-        .eq('created_by', user.id)
-        .limit(1)
-        .single();
+      setLoading(true);
+      try {
+        const { data: ws } = await supabase
+          .from('workspaces')
+          .select('id, name')
+          .eq('created_by', user.id)
+          .limit(1)
+          .single();
 
-      if (!workspace) {
+        if (!ws) {
+          setLoading(false);
+          return;
+        }
+
+        const workspaceId = ws.id;
+        setBusinessName(ws.name || 'your business');
+
+        const [docData, taskData, knowledgeData, leadsData] = await Promise.all([
+          supabase.from('documents').select('*').eq('workspace_id', workspaceId).order('created_at', { ascending: false }).limit(5),
+          supabase.from('tasks').select('*').eq('workspace_id', workspaceId).order('created_at', { ascending: false }).limit(10),
+          supabase.from('knowledge').select('*').eq('workspace_id', workspaceId).limit(5),
+          supabase.from('leads').select('*').eq('workspace_id', workspaceId).order('created_at', { ascending: false }).limit(10),
+        ]);
+
+        if (docData.data) setDocuments(docData.data as Document[]);
+        if (taskData.data) setTasks(taskData.data as Task[]);
+        if (knowledgeData.data) setKnowledge(knowledgeData.data as KnowledgeEntry[]);
+        if (leadsData.data) setLeads(leadsData.data as Lead[]);
+
+        generateRecommendations(leadsData.data as Lead[] | null, tasks, documents);
+      } catch (error) {
+        console.error('Failed to load dashboard data:', error);
+      } finally {
         setLoading(false);
-        return;
       }
-
-      const workspaceId = workspace.id;
-
-      const [docData, taskData, knowledgeData, leadsData] = await Promise.all([
-        supabase.from('documents').select('*').eq('workspace_id', workspaceId),
-        supabase.from('tasks').select('*').eq('workspace_id', workspaceId),
-        supabase.from('knowledge').select('*').eq('workspace_id', workspaceId),
-        supabase.from('leads').select('*').eq('workspace_id', workspaceId),
-      ]);
-
-      if (docData.data) setDocuments(docData.data as Document[]);
-      if (taskData.data) setTasks(taskData.data as Task[]);
-      if (knowledgeData.data) setKnowledge(knowledgeData.data as KnowledgeEntry[]);
-      if (leadsData.data) setLeads(leadsData.data as Lead[]);
-
-      setLoading(false);
     };
 
     fetchData();
   }, [user]);
 
-  const hotLeads = leads.filter((l) => l.lead_score >= 80).length;
-  const pipelineLeads = leads.filter((l) =>
-    ['contacted', 'interested', 'proposal_sent'].includes(l.status)
-  ).length;
-  const completedTasks = tasks.filter((t) => t.status === 'done').length;
+  function generateRecommendations(leadsData: Lead[] | null, tasksData: Task[], docs: Document[]) {
+    const recs: Recommendation[] = [];
+    const currentLeads = leadsData || leads;
+
+    // Check for leads without outreach
+    if (currentLeads.length > 0) {
+      const newLeads = currentLeads.filter(l => l.status === 'new').length;
+      if (newLeads > 0) {
+        recs.push({
+          id: 'leads_no_outreach',
+          type: 'leads_without_outreach',
+          title: `${newLeads} new lead${newLeads > 1 ? 's' : ''} waiting`,
+          description: 'These leads haven\'t received any outreach yet.',
+          action: 'Review leads',
+          href: '/leads',
+          count: newLeads,
+        });
+      }
+    }
+
+    // Check for follow-up tasks
+    const followUpTasks = tasksData.filter(t => 
+      t.status !== 'done' && t.due_date && new Date(t.due_date) <= new Date()
+    ).length;
+    if (followUpTasks > 0) {
+      recs.push({
+        id: 'follow_ups',
+        type: 'follow_ups_due',
+        title: `${followUpTasks} follow-up${followUpTasks > 1 ? 's' : ''} due`,
+        description: 'These tasks need your attention.',
+        action: 'View tasks',
+        href: '/tasks',
+        count: followUpTasks,
+      });
+    }
+
+    // Check for empty knowledge base
+    if (knowledge.length === 0) {
+      recs.push({
+        id: 'knowledge_gaps',
+        type: 'knowledge_gaps',
+        title: 'Add your business knowledge',
+        description: 'Help Estech understand your business better.',
+        action: 'Add knowledge',
+        href: '/knowledge',
+      });
+    }
+
+    setRecommendations(recs);
+  }
+
+  async function handleAiSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!aiInput.trim() || aiLoading) return;
+
+    setAiLoading(true);
+    setAiSuggestion(null);
+
+    try {
+      const res = await fetch('/api/dashboard/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: aiInput.trim() }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error || 'Failed to get response');
+      }
+
+      setAiSuggestion(json.suggestion);
+    } catch (err: any) {
+      setAiSuggestion({
+        message: err.message || 'Something went wrong. Please try again.',
+        intent: 'error',
+      });
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
+  function handleAiAction() {
+    if (!aiSuggestion?.action || !aiSuggestion.action.href) return;
+    const { href, params } = aiSuggestion.action;
+    const url = params ? `${href}?${new URLSearchParams(params).toString()}` : href;
+    if (url) {
+      router.push(url);
+    }
+  }
+
+  const hotLeads = leads.filter(l => l.lead_score >= 80).length;
+  const pipelineLeads = leads.filter(l => ['contacted', 'interested', 'proposal_sent'].includes(l.status)).length;
+  const completedTasks = tasks.filter(t => t.status === 'done').length;
 
   if (authLoading || loading) {
     return (
@@ -108,160 +235,224 @@ export default function DashboardPage() {
       <main className="lg:pl-64 pt-14 lg:pt-0">
         <div className="px-4 py-6 lg:px-8 lg:py-8">
           <PageHeader
-            title="Dashboard"
-            description="Your business at a glance"
+            title={`Welcome back${businessName ? ` to ${businessName}` : ''}`}
+            description="Your AI-powered business assistant"
           />
 
-          <div className="mb-6 grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard icon={MessageSquare} value={tasks.length} label="Tasks" />
-            <StatCard icon={FileText} value={documents.length} label="Documents" />
-            <StatCard icon={CheckSquare} value={completedTasks} label="Completed" />
-            <StatCard icon={Target} value={hotLeads} label="Hot Leads" />
+          {/* AI Interaction Area */}
+          <div className="mb-8">
+            <div className="rounded-2xl border border-border/40 bg-surface/80 backdrop-blur-xl p-6 lg:p-8">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15">
+                  <Bot className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-text-heading">What can I help you with?</h3>
+                  <p className="text-xs text-text-muted">Ask me anything about your business</p>
+                </div>
+              </div>
+
+              <form onSubmit={handleAiSubmit} className="space-y-4">
+                <div className="relative">
+                  <Input
+                    value={aiInput}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAiInput(e.target.value)}
+                    placeholder="Ask Estech about your business..."
+                    className="pr-12 min-h-[48px] text-sm"
+                    disabled={aiLoading}
+                  />
+                  <button
+                    type="submit"
+                    disabled={!aiInput.trim() || aiLoading}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white hover:bg-primary/90 disabled:opacity-50 transition-all"
+                    aria-label="Send message"
+                  >
+                    {aiLoading ? (
+                      <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              </form>
+
+              {aiSuggestion && (
+                <div className="mt-4 rounded-xl border border-border/40 bg-background-secondary/40 p-4">
+                  <p className="text-sm text-text-heading leading-6 mb-3">{aiSuggestion.message}</p>
+                  {aiSuggestion.action && (
+                    <Button
+                      onClick={handleAiAction}
+                      variant="primary"
+                      size="sm"
+                      className="flex items-center gap-2"
+                    >
+                      {aiSuggestion.action.label}
+                      <ArrowUpRight className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
+          {/* Recommendations */}
+          {recommendations.length > 0 && (
+            <div className="mb-8">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-primary mb-4">
+                Estech recommends
+              </h3>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {recommendations.map(rec => (
+                  <button
+                    key={rec.id}
+                    onClick={() => router.push(rec.href)}
+                    className="rounded-xl border border-border/40 bg-background-secondary/40 p-4 text-left transition hover:bg-surface/60 hover:border-primary/30"
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <h4 className="text-sm font-medium text-text-heading">{rec.title}</h4>
+                      {rec.count !== undefined && (
+                        <Badge variant="primary" className="text-xs">{rec.count}</Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-text-muted mb-3">{rec.description}</p>
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
+                      {rec.action}
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Business Snapshot */}
           <div className="grid gap-4 lg:gap-6 grid-cols-1 lg:grid-cols-3">
             <div className="lg:col-span-2 space-y-4 lg:space-y-6">
-              <Section title="Business Health">
-                <div className="space-y-3 lg:space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-text-muted mb-1">Lead Pipeline</p>
-                      <p className="text-xl font-semibold text-text-heading lg:text-2xl">{pipelineLeads || 'No data yet'}</p>
-                    </div>
-                    <Badge variant={pipelineLeads > 0 ? 'success' : 'default'}>
-                      {pipelineLeads > 0 ? 'Growing' : 'Empty'}
-                    </Badge>
-                  </div>
-                  <div className="h-2 w-full rounded-full bg-background-secondary/60 overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-primary transition-all duration-500"
-                      style={{ width: `${Math.min(100, (pipelineLeads / Math.max(1, leads.length)) * 100)}%` }}
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-4 pt-2">
-                    <MetricCard label="Knowledge entries" value={knowledge.length || 0} icon={Brain} />
-                    <MetricCard label="Task completion" value={tasks.length > 0 ? `${Math.round((completedTasks / tasks.length) * 100)}%` : '0%'} icon={TrendingUp} />
-                  </div>
+              <Section title="Business Overview">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <StatCard icon={Target} value={leads.length} label="Total Leads" />
+                  <StatCard icon={Target} value={hotLeads} label="Hot Leads" />
+                  <StatCard icon={CheckSquare} value={completedTasks} label="Tasks Done" />
+                  <StatCard icon={FileText} value={documents.length} label="Documents" />
                 </div>
               </Section>
 
-              <Section title="AI Insights">
-                <div className="space-y-2 lg:space-y-3">
-                  {knowledge.length > 0 ? (
-                    <InsightItem
-                      icon={Brain}
-                      iconClassName="bg-primary/10"
-                      iconColor="text-primary"
-                      title="Knowledge Base Active"
-                      description={`${knowledge.length} knowledge entries power your AI responses with accurate business context.`}
-                    />
-                  ) : (
-                    <InsightItem
-                      icon={Brain}
-                      iconClassName="bg-warning/10"
-                      iconColor="text-warning"
-                      title="Knowledge Needed"
-                      description="Add knowledge to your business brain for more accurate AI suggestions."
-                    />
-                  )}
-                  {leads.length > 0 ? (
-                    <InsightItem
-                      icon={Target}
-                      iconClassName="bg-success/10"
-                      iconColor="text-success"
-                      title="Lead Generation Active"
-                      description={`${hotLeads} hot leads ready for outreach. Prioritize high-score prospects first.`}
-                    />
-                  ) : (
-                    <InsightItem
-                      icon={Target}
-                      iconClassName="bg-warning/10"
-                      iconColor="text-warning"
-                      title="Lead Generation Needed"
-                      description="Start finding leads to build your pipeline."
-                    />
-                  )}
-                </div>
+              <Section title="Recent Activity">
+                {documents.length === 0 && tasks.length === 0 && leads.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-sm text-text-muted mb-4">No activity yet</p>
+                    <Button
+                      onClick={() => setAiInput('I need to find potential customers')}
+                      variant="primary"
+                      size="sm"
+                    >
+                      Ask Estech for help
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {documents.slice(0, 3).map(doc => (
+                      <div key={doc.id} className="flex items-center justify-between text-sm py-2">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-3.5 w-3.5 text-primary" />
+                          <span className="truncate text-text-heading">{doc.title}</span>
+                        </div>
+                        <span className="text-xs text-text-muted capitalize">{doc.type}</span>
+                      </div>
+                    ))}
+                    {tasks.slice(0, 3).map(task => (
+                      <div key={task.id} className="flex items-center justify-between text-sm py-2">
+                        <div className="flex items-center gap-2">
+                          <CheckSquare className="h-3.5 w-3.5 text-primary" />
+                          <span className="truncate text-text-heading">{task.title}</span>
+                        </div>
+                        <span className="text-xs text-text-muted capitalize">{task.status}</span>
+                      </div>
+                    ))}
+                    {leads.slice(0, 3).map(lead => (
+                      <div key={lead.id} className="flex items-center justify-between text-sm py-2">
+                        <div className="flex items-center gap-2">
+                          <Target className="h-3.5 w-3.5 text-primary" />
+                          <span className="truncate text-text-heading">{lead.business_name}</span>
+                        </div>
+                        <span className="text-xs text-text-muted">Score: {lead.lead_score}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </Section>
             </div>
 
             <div className="space-y-4 lg:space-y-6">
               <Section title="Quick Actions">
                 <div className="space-y-2">
-                  <QuickAction href="/knowledge" icon={Plus} label="Add knowledge entry" description="Improve AI accuracy" />
-                  <QuickAction href="/leads" icon={Target} label="Find leads" description="Discover prospects" />
-                  <QuickAction href="/responses" icon={MessageSquare} label="Write reply" description="Craft response" />
-                  <QuickAction href="/documents" icon={FileText} label="Create document" description="Generate quote or proposal" />
+                  <button
+                    onClick={() => {
+                      setAiInput('I need to find potential customers');
+                    }}
+                    className="w-full flex items-center justify-between rounded-xl border border-border/40 bg-background-secondary/40 px-4 py-3 text-sm text-text-heading transition hover:bg-surface/60"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Target className="h-4 w-4 text-primary" />
+                      <span>Find leads</span>
+                    </div>
+                    <ArrowUpRight className="h-3.5 w-3.5 text-text-muted" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      setAiInput('I need to reply to a customer');
+                    }}
+                    className="w-full flex items-center justify-between rounded-xl border border-border/40 bg-background-secondary/40 px-4 py-3 text-sm text-text-heading transition hover:bg-surface/60"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Sparkles className="h-4 w-4 text-primary" />
+                      <span>Reply to customer</span>
+                    </div>
+                    <ArrowUpRight className="h-3.5 w-3.5 text-text-muted" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      setAiInput('Create a quotation or proposal');
+                    }}
+                    className="w-full flex items-center justify-between rounded-xl border border-border/40 bg-background-secondary/40 px-4 py-3 text-sm text-text-heading transition hover:bg-surface/60"
+                  >
+                    <div className="flex items-center gap-3">
+                      <FileText className="h-4 w-4 text-primary" />
+                      <span>Create document</span>
+                    </div>
+                    <ArrowUpRight className="h-3.5 w-3.5 text-text-muted" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      setAiInput('Add a task or reminder');
+                    }}
+                    className="w-full flex items-center justify-between rounded-xl border border-border/40 bg-background-secondary/40 px-4 py-3 text-sm text-text-heading transition hover:bg-surface/60"
+                  >
+                    <div className="flex items-center gap-3">
+                      <CheckSquare className="h-4 w-4 text-primary" />
+                      <span>Add task</span>
+                    </div>
+                    <ArrowUpRight className="h-3.5 w-3.5 text-text-muted" />
+                  </button>
                 </div>
               </Section>
 
-              <Section title="Recent Activity">
-                <div className="space-y-1.5 lg:space-y-2 max-h-64 overflow-y-auto">
-                  {documents.slice(0, 3).map((doc) => (
-                    <div key={doc.id} className="flex items-center justify-between text-sm py-1">
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-3.5 w-3.5 text-primary" />
-                        <span className="truncate text-text-heading">{doc.title}</span>
+              {knowledge.length > 0 && (
+                <Section title="Business Brain">
+                  <div className="space-y-2">
+                    {knowledge.slice(0, 3).map(entry => (
+                      <div key={entry.id} className="flex items-center gap-2 text-sm">
+                        <Brain className="h-3.5 w-3.5 text-primary" />
+                        <span className="truncate text-text-heading">{entry.title}</span>
                       </div>
-                      <span className="text-xs text-text-muted">{doc.type}</span>
-                    </div>
-                  ))}
-                  {documents.length === 0 && (
-                    <p className="text-sm text-text-muted text-center py-2">No recent activity</p>
-                  )}
-                </div>
-              </Section>
+                    ))}
+                  </div>
+                </Section>
+              )}
             </div>
           </div>
         </div>
       </main>
-    </div>
-  );
-}
-
-function MetricCard({ label, value, icon: Icon }: { label: string; value: string | number; icon: any }) {
-  return (
-    <div className="rounded-xl border border-border/30 bg-background-secondary/30 p-4">
-      <div className="flex items-center gap-2 mb-2">
-        <Icon className="h-3.5 w-3.5 text-primary" />
-        <span className="text-[0.65rem] text-text-muted uppercase tracking-wider">{label}</span>
-      </div>
-      <p className="text-xl font-semibold text-text-heading">{value}</p>
-    </div>
-  );
-}
-
-function QuickAction({ href, icon: Icon, label, description }: { href: string; icon: any; label: string; description: string }) {
-  return (
-    <Link
-      href={href}
-      className="flex items-center justify-between rounded-xl border border-border/30 bg-background-secondary/30 p-3.5 transition-all duration-200 hover:bg-surface/50"
-    >
-      <div className="flex items-center gap-3">
-        <Icon className="h-4 w-4 text-primary" />
-        <div>
-          <p className="text-sm font-medium text-text-heading">{label}</p>
-          <p className="text-[0.65rem] text-text-muted">{description}</p>
-        </div>
-      </div>
-      <ArrowUpRight className="h-3.5 w-3.5 text-text-muted" />
-    </Link>
-  );
-}
-
-function InsightItem({ icon: Icon, iconClassName, iconColor, title, description }: {
-  icon: any;
-  iconClassName: string;
-  iconColor: string;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="flex items-start gap-3">
-      <div className={`flex h-8 w-8 items-center justify-center rounded-lg shrink-0 ${iconClassName}`}>
-        <Icon className={`h-4 w-4 ${iconColor}`} />
-      </div>
-      <p className="text-sm text-text-muted leading-6">{description}</p>
     </div>
   );
 }

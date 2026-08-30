@@ -9,6 +9,8 @@ export async function middleware(request: NextRequest) {
     '/content', '/documents', '/responses', '/assistant', '/settings', '/profile'
   ];
 
+  const onboardingRoute = '/onboarding';
+
   const authRoutes = ['/login', '/register', '/forgot-password', '/reset-password', '/verify-email'];
 
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
@@ -47,6 +49,38 @@ export async function middleware(request: NextRequest) {
   if (user && isAuthRoute) {
     const url = request.nextUrl.clone();
     url.pathname = '/dashboard';
+    return NextResponse.redirect(url);
+  }
+
+  if (user && pathname.startsWith(onboardingRoute)) {
+    const supabaseForCheck = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+        },
+      }
+    );
+
+    const { data: profile } = await supabaseForCheck
+      .from('profiles')
+      .select('onboarding_completed')
+      .eq('id', user.id)
+      .single();
+
+    if (profile?.onboarding_completed) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/dashboard';
+      return NextResponse.redirect(url);
+    }
+  }
+
+  if (!user && pathname.startsWith(onboardingRoute)) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/login';
     return NextResponse.redirect(url);
   }
 
