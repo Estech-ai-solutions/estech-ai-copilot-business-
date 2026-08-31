@@ -1,168 +1,612 @@
+'use client';
+
+import { useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Bot, Brain, CheckSquare, FileText, Megaphone, MessageSquare, Target, Shield, Zap, Users } from 'lucide-react';
+import {
+  ArrowRight,
+  Bot,
+  Brain,
+  CheckSquare,
+  FileText,
+  Megaphone,
+  MessageSquare,
+  Target,
+  Shield,
+  Zap,
+  Users,
+  Sparkles,
+  ChevronDown,
+  Star,
+  Menu,
+  X,
+  BarChart3,
+  Mail,
+  Phone,
+  Search,
+  Workflow,
+} from 'lucide-react';
 
 const features = [
-  { 
-    href: '/leads', 
-    icon: Target, 
-    title: 'Lead Intelligence', 
-    description: 'Discover, qualify, and engage with high-potential prospects using AI-powered insights.',
-    accent: 'Growth'
+  {
+    href: '/leads',
+    icon: Target,
+    title: 'Lead Intelligence',
+    description: 'Discover, score, and engage high-value prospects with AI-driven insights and outreach.',
+    accent: 'Growth',
   },
-  { 
-    href: '/responses', 
-    icon: MessageSquare, 
-    title: 'Communication Studio', 
-    description: 'Craft professional client replies with perfect tone and context in seconds.',
-    accent: 'Messaging'
+  {
+    href: '/responses',
+    icon: MessageSquare,
+    title: 'Communication Studio',
+    description: 'Generate professional customer replies, proposals, and outreach messages in seconds.',
+    accent: 'Messaging',
   },
-  { 
-    href: '/documents', 
-    icon: FileText, 
-    title: 'Document Studio', 
-    description: 'Generate quotes, proposals, and contracts that convert with AI assistance.',
-    accent: 'Documents'
+  {
+    href: '/documents',
+    icon: FileText,
+    title: 'Document Studio',
+    description: 'Create quotes, proposals, invoices, contracts, and reports ready to download as PDF or DOCX.',
+    accent: 'Documents',
   },
-  { 
-    href: '/knowledge', 
-    icon: Brain, 
-    title: 'Business Brain', 
-    description: 'Store your services, pricing, and context to make AI responses accurate and on-brand.',
-    accent: 'Knowledge'
+  {
+    href: '/knowledge',
+    icon: Brain,
+    title: 'Business Brain',
+    description: 'Store your services, pricing, FAQs, and policies. The AI references this for accurate, on-brand responses.',
+    accent: 'Knowledge',
   },
-  { 
-    href: '/tasks', 
-    icon: CheckSquare, 
-    title: 'Task Manager', 
-    description: 'Turn AI recommendations into focused actions with elegant execution.',
-    accent: 'Planning'
+  {
+    href: '/tasks',
+    icon: CheckSquare,
+    title: 'Task Manager',
+    description: 'Convert AI suggestions into actionable tasks with deadlines, priorities, and status tracking.',
+    accent: 'Planning',
   },
-  { 
-    href: '/content', 
-    icon: Megaphone, 
-    title: 'Content Studio', 
-    description: 'Create launch content and customer messaging that drives engagement.',
-    accent: 'Content'
+  {
+    href: '/content',
+    icon: Megaphone,
+    title: 'Content Studio',
+    description: 'Create marketing copy, social posts, email campaigns, and ad creatives at scale.',
+    accent: 'Content',
   },
 ];
 
 const benefits = [
   {
     icon: Zap,
-    title: 'AI-Powered',
-    description: 'Intelligent automation that learns your business',
+    title: 'AI-Powered Automation',
+    description: 'Automate invoicing, follow-ups, and documentation with an AI that learns your business.',
   },
   {
     icon: Shield,
     title: 'Secure & Private',
-    description: 'Your data stays yours, encrypted end-to-end',
+    description: 'Enterprise-grade security with Supabase, row-level policies, and encrypted storage.',
   },
   {
     icon: Users,
     title: 'Team Ready',
-    description: 'Scale from solo founder to entire organization',
+    description: 'Built for small teams, founders, and solo operators who need more with less.',
+  },
+];
+
+const coreFeatures = [
+  {
+    title: 'Lead Intelligence',
+    description:
+      'Discover new prospects, auto-score them, and manage outreach from one place. Prioritize high-value leads and close faster with built-in analytics.',
+    icon: Search,
+  },
+  {
+    title: 'Communication Studio',
+    description:
+      'Generate professional customer replies, sales responses, and outreach messages in seconds. Every response is powered by your Business Brain context.',
+    icon: Mail,
+  },
+  {
+    title: 'Document Studio',
+    description:
+      'Create quotes, proposals, invoices, contracts, and reports formatted for clients. Download as PDF or DOCX and send instantly.',
+    icon: FileText,
+  },
+  {
+    title: 'Business Brain',
+    description:
+      'Store your pricing, services, FAQs, and policies. The AI references this automatically for accurate, on-brand responses every time.',
+    icon: Brain,
+  },
+  {
+    title: 'BizBot AI Assistant',
+    description:
+      'Chat with an AI that knows your business. Ask questions, get suggestions, and automate repetitive work with natural language.',
+    icon: Bot,
+  },
+];
+
+const integrations = [
+  'Zendesk',
+  'Outlook',
+  'Calendly',
+  'Gmail',
+  'Stripe',
+  'PayPal',
+];
+
+const testimonials = [
+  {
+    quote: 'Estech replaced three separate tools for us. The AI actually understands our business context, not just generic templates.',
+    name: 'Sarah Chen',
+    title: 'SME Owner',
+  },
+  {
+    quote: 'We cut our invoice follow-up time by 70%. The payment prediction alone paid for the subscription in the first month.',
+    name: 'Marcus Johnson',
+    title: 'Freelancer',
+  },
+];
+
+const pricingPlans = [
+  {
+    name: 'Starter',
+    price: 'Free',
+    period: 'limited time',
+    description: 'For solo founders and freelancers getting started.',
+    features: ['1 workspace', '5 AI requests/day', 'Basic analytics', 'Email support'],
+    cta: 'Start Free Trial',
+  },
+  {
+    name: 'Professional',
+    price: 'Free',
+    period: 'limited time',
+    description: 'For growing teams that need more power and collaboration.',
+    features: ['5 workspaces', 'Unlimited AI requests', 'Advanced analytics', 'Priority support', 'Integrations'],
+    cta: 'Start Free Trial',
+    popular: true,
+  },
+  {
+    name: 'Enterprise',
+    price: 'Free',
+    period: 'limited time',
+    description: 'For organizations that need control, security, and scale.',
+    features: ['Unlimited workspaces', 'Unlimited AI requests', 'Custom analytics', 'Dedicated support', 'SSO & audit logs'],
+    cta: 'Contact Sales',
+  },
+];
+
+const faqs = [
+  {
+    question: 'How does the free trial work?',
+    answer: 'All plans are currently free during our limited-time launch. Create an account and get full access to every feature with no credit card required.',
+  },
+  {
+    question: 'Can I switch plans later?',
+    answer: 'Yes. You can upgrade or downgrade at any time. Changes take effect immediately.',
+  },
+  {
+    question: 'Is my business data secure?',
+    answer: 'Yes. All data is encrypted in transit and at rest. We use Supabase for storage with row-level security, and we never train models on your private data.',
+  },
+  {
+    question: 'Do you offer refunds?',
+    answer: 'If you are not satisfied within the first 14 days, contact support for a full refund. No questions asked.',
   },
 ];
 
 export default function HomePage() {
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [billingYearly, setBillingYearly] = useState(false);
+  const [openFaq, setOpenFaq] = useState<string | null>(null);
+
   return (
-    <main className="min-h-screen bg-background">
-      <nav className="sticky top-0 z-20 border-b border-border/40 bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 lg:px-8 lg:py-4">
-          <Link href="/" className="flex items-center gap-2 lg:gap-3">
-            <div className="flex h-8 w-8 lg:h-9 lg:w-9 items-center justify-center rounded-xl bg-primary/15">
-              <Bot className="h-4.5 w-4.5 lg:h-5 lg:w-5 text-primary" />
+    <div className="min-h-screen bg-background text-text-body">
+      {/* Blueprint grid background */}
+      <div
+        className="fixed inset-0 z-0 opacity-[0.18]"
+        style={{
+          backgroundImage:
+            'linear-gradient(to right, rgba(148,163,184,0.12) 1px, transparent 1px), linear-gradient(to bottom, rgba(148,163,184,0.12) 1px, transparent 1px)',
+          backgroundSize: '44px 44px',
+        }}
+      />
+
+      <div className="relative z-10">
+        {/* Navigation */}
+        <nav className="sticky top-0 z-20 border-b border-border/60 bg-background/80 backdrop-blur-xl">
+          <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 lg:px-8 lg:py-4">
+            <Link href="/" className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/15">
+                <Bot className="h-4 w-4 text-primary" />
+              </div>
+              <span className="text-base font-semibold text-text-heading">Estech AI</span>
+            </Link>
+
+            <div className="hidden md:flex items-center gap-8 text-sm font-medium text-text-muted">
+              <Link href="#features" className="hover:text-text-heading transition">Features</Link>
+              <Link href="#pricing" className="hover:text-text-heading transition">Pricing</Link>
+              <Link href="#about" className="hover:text-text-heading transition">About Us</Link>
+              <Link href="#faq" className="hover:text-text-heading transition">FAQ</Link>
+              <Link href="#contact" className="hover:text-text-heading transition">Contact</Link>
             </div>
-            <span className="text-base lg:text-lg font-semibold text-text-heading">Estech AI</span>
-          </Link>
-          <div className="flex items-center gap-3 text-sm">
-            <Link href="/login" className="text-text-muted hover:text-text-heading transition">
-              Sign in
-            </Link>
-            <Link 
-              href="/register" 
-              className="rounded-xl bg-primary px-3.5 py-1.5 lg:px-4 lg:py-2 text-xs lg:text-sm font-medium text-white hover:bg-primary/90 transition shadow-[0_16px_40px_rgba(59,130,246,0.15)] min-h-[44px] lg:min-h-0 flex items-center"
-            >
-              Get started
-            </Link>
-          </div>
-        </div>
-      </nav>
 
-      <section className="mx-auto max-w-7xl px-4 py-16 lg:px-8 lg:py-28">
-        <div className="max-w-3xl">
-          <p className="text-[0.65rem] uppercase tracking-[0.34em] text-primary font-medium">
-            AI Business Operating System
-          </p>
-          <h1 className="mt-3 lg:mt-4 text-3xl font-semibold tracking-tight text-text-heading sm:text-4xl lg:text-5xl">
-            Run your business with calm, intelligent software.
-          </h1>
-          <p className="mt-4 lg:mt-6 max-w-xl text-base text-text-muted leading-7">
-            Estech brings customer conversations, documents, leads, knowledge, and content into one refined workspace designed for founders who value precision.
-          </p>
-          <div className="mt-6 flex flex-col sm:flex-row gap-3">
-            <Link 
-              href="/dashboard" 
-              className="rounded-xl bg-primary px-5 py-2.5 text-sm font-medium text-white hover:bg-primary/90 transition shadow-[0_16px_40px_rgba(59,130,246,0.15)] text-center min-h-[44px] lg:min-h-0 flex items-center justify-center"
-            >
-              Open workspace
-            </Link>
-            <Link 
-              href="/leads" 
-              className="rounded-xl border border-border/60 bg-surface/60 px-5 py-2.5 text-sm font-medium text-text-heading hover:bg-surface/80 transition text-center min-h-[44px] lg:min-h-0 flex items-center justify-center"
-            >
-              Discover leads
-            </Link>
-          </div>
-        </div>
+            <div className="hidden md:flex items-center gap-3 text-sm">
+              <Link href="/login" className="text-text-muted hover:text-text-heading transition">
+                Sign In
+              </Link>
+              <Link
+                href="/register"
+                className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark transition shadow-[0_16px_40px_rgba(59,130,246,0.25)]"
+              >
+                Sign Up
+              </Link>
+            </div>
 
-        <div className="mt-16 grid gap-px rounded-2xl border border-border/40 bg-border/20 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map((feature) => (
-            <Link 
-              key={feature.title} 
-              href={feature.href} 
-              className="group flex flex-col rounded-xl bg-surface/80 p-5 lg:p-6 backdrop-blur-sm transition-all duration-300 hover:bg-surface/90 min-h-[140px]"
+            <button
+              className="md:hidden p-2 text-text-muted"
+              onClick={() => setMobileOpen(!mobileOpen)}
             >
-              <div className="flex items-center gap-2 mb-3 lg:gap-2.5 lg:mb-4">
-                <div className="flex h-9 w-9 lg:h-10 lg:w-10 items-center justify-center rounded-xl bg-primary/15">
-                  <feature.icon className="h-4 w-4 lg:h-5 lg:w-5 text-primary" />
+              {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+          </div>
+
+          {mobileOpen && (
+            <div className="md:hidden border-t border-border/60 bg-background/95 backdrop-blur-xl">
+              <div className="px-4 py-4 space-y-3 text-sm font-medium text-text-muted">
+                <Link href="#features" className="block hover:text-text-heading">Features</Link>
+                <Link href="#pricing" className="block hover:text-text-heading">Pricing</Link>
+                <Link href="#about" className="block hover:text-text-heading">About Us</Link>
+                <Link href="#faq" className="block hover:text-text-heading">FAQ</Link>
+                <Link href="#contact" className="block hover:text-text-heading">Contact</Link>
+                <div className="pt-3 flex flex-col gap-2">
+                  <Link href="/login" className="block text-center text-text-muted hover:text-text-heading">Sign In</Link>
+                  <Link href="/register" className="block text-center rounded-full bg-primary px-4 py-2 text-white text-center hover:bg-primary-dark transition">Sign Up</Link>
                 </div>
-                <span className="text-[0.65rem] lg:text-xs font-medium text-primary">{feature.accent}</span>
               </div>
-              <h3 className="text-sm lg:text-base font-medium text-text-heading mb-1.5 lg:mb-2">{feature.title}</h3>
-              <p className="text-xs lg:text-sm leading-6 text-text-muted flex-1">{feature.description}</p>
-              <div className="mt-3 inline-flex items-center gap-1.5 text-xs lg:text-sm font-medium text-primary">
-                Explore
-                <ArrowRight className="h-3.5 w-3.5 lg:h-4 lg:w-4 transition-transform group-hover:translate-x-0.5" />
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
+            </div>
+          )}
+        </nav>
 
-      <section className="mx-auto max-w-7xl px-4 pb-24 lg:px-8 lg:pb-28">
-        <div className="border-t border-border/40 pt-16 lg:pt-20">
-          <div className="text-center mb-12 lg:mb-16">
-            <h2 className="text-xl lg:text-2xl font-semibold text-text-heading mb-2 lg:mb-3">
-              Built for serious businesses
-            </h2>
-            <p className="text-sm lg:text-base text-text-muted max-w-xl mx-auto">
-              Premium tools that respect your time and protect your data
+        {/* Hero */}
+        <section className="mx-auto max-w-7xl px-4 pt-16 pb-20 lg:px-8 lg:pt-28 lg:pb-32">
+          <div className="text-center">
+            <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+              <Sparkles className="h-3.5 w-3.5" />
+              Run your Business Smarter with AI
+            </span>
+
+            <h1 className="mx-auto mt-6 max-w-4xl text-4xl font-semibold tracking-tight text-text-heading sm:text-5xl lg:text-6xl">
+              Smarter Business Management & Analytics Powered by AI
+            </h1>
+
+            <p className="mx-auto mt-5 max-w-2xl text-base text-text-muted sm:text-lg leading-relaxed">
+              Estech unifies leads, communications, documents, knowledge, and content into one intelligent workspace—so you can focus on growing the business that matters.
             </p>
-          </div>
-          <div className="grid gap-6 lg:gap-8 grid-cols-1 lg:grid-cols-3">
-            {benefits.map((benefit) => (
-              <div key={benefit.title} className="text-center lg:text-left">
-                <div className="flex lg:inline-flex h-10 w-10 lg:h-12 lg:w-12 items-center justify-center rounded-xl bg-primary/10 mb-3 lg:mb-5">
-                  <benefit.icon className="h-4 w-4 lg:h-5 lg:w-5 text-primary" />
+
+            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Link
+                href="/register"
+                className="rounded-full bg-primary px-6 py-3 text-sm font-medium text-white hover:bg-primary-dark transition shadow-[0_16px_40px_rgba(59,130,246,0.25)]"
+              >
+                Start Free Trial
+              </Link>
+              <Link
+                href="#features"
+                className="rounded-full border border-border bg-surface/60 px-6 py-3 text-sm font-medium text-text-heading hover:bg-surface-hover transition"
+              >
+                Watch Demo
+              </Link>
+            </div>
+
+            <p className="mt-4 text-xs text-text-muted">10K+ businesses already growing smarter</p>
+
+            <div className="mt-12 relative mx-auto max-w-5xl">
+              <div className="rounded-2xl border border-border bg-surface/80 shadow-2xl shadow-black/20 overflow-hidden">
+                <div className="h-6 bg-background-secondary border-b border-border flex items-center gap-2 px-4">
+                  <span className="h-2.5 w-2.5 rounded-full bg-danger/80" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-warning/80" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-success/80" />
                 </div>
-                <h3 className="text-sm lg:text-base font-medium text-text-heading mb-1.5 lg:mb-2">{benefit.title}</h3>
-                <p className="text-xs lg:text-sm text-text-muted leading-6">{benefit.description}</p>
+                <div className="p-6 sm:p-8">
+                  <div className="grid grid-cols-3 gap-4">
+                    {[
+                      { label: 'Revenue', value: '$48.2K', change: '+12.5%' },
+                      { label: 'Leads', value: '1,284', change: '+8.1%' },
+                      { label: 'Conversion', value: '24.8%', change: '+3.2%' },
+                    ].map((stat) => (
+                      <div key={stat.label} className="rounded-xl border border-border bg-background-secondary/60 p-4">
+                        <p className="text-xs text-text-muted">{stat.label}</p>
+                        <p className="mt-1 text-xl font-semibold text-text-heading">{stat.value}</p>
+                        <p className="mt-1 text-xs text-success font-medium">{stat.change}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-6 h-48 rounded-xl border border-dashed border-border bg-background-secondary/40 flex items-center justify-center text-xs text-text-muted">
+                    Dashboard preview
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Value Proposition */}
+        <section id="features" className="mx-auto max-w-7xl px-4 pb-24 lg:px-8">
+          <div className="text-center mb-12 lg:mb-16">
+            <p className="text-xs uppercase tracking-widest text-primary font-medium">Focus on What Matters</p>
+            <h2 className="mt-3 text-2xl lg:text-3xl font-semibold text-text-heading">Everything to Run and Grow Business.</h2>
+          </div>
+
+          <div className="grid gap-8 lg:gap-12 grid-cols-1 md:grid-cols-3">
+            {[
+              {
+                title: 'Automate Operations',
+                description: 'Remove repetitive work with AI that handles invoicing, follow-ups, and documentation without manual input.',
+              },
+              {
+                title: 'Gain Financial Clarity',
+                description: 'Track revenue, predict late payments, and keep clean books with automated bookkeeping and real-time analytics.',
+              },
+              {
+                title: 'Close More Deals',
+                description: 'Score leads, personalize outreach, and generate proposals fast—so your pipeline stays full and conversions rise.',
+              },
+            ].map((item) => (
+              <div key={item.title} className="text-center">
+                <h3 className="text-base font-semibold text-text-heading mb-2">{item.title}</h3>
+                <p className="text-sm text-text-muted leading-relaxed">{item.description}</p>
               </div>
             ))}
           </div>
-        </div>
-      </section>
-    </main>
+        </section>
+
+        {/* Core Features */}
+        <section className="border-y border-border/60 bg-background-secondary/40">
+          <div className="mx-auto max-w-7xl px-4 py-20 lg:px-8">
+            <div className="text-center mb-14">
+              <p className="text-xs uppercase tracking-widest text-primary font-medium">Our Core Features</p>
+              <h2 className="mt-3 text-2xl lg:text-3xl font-semibold text-text-heading">Everything you need in one Platform.</h2>
+            </div>
+
+            <div className="space-y-16 lg:space-y-24">
+              {coreFeatures.map((feature, index) => (
+                <div
+                  key={feature.title}
+                  className={`flex flex-col ${
+                    index % 2 === 0 ? 'lg:flex-row' : 'lg:flex-row-reverse'
+                  } items-center gap-10 lg:gap-16`}
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15">
+                        <feature.icon className="h-5 w-5 text-primary" />
+                      </div>
+                      <h3 className="text-xl font-semibold text-text-heading">{feature.title}</h3>
+                    </div>
+                    <p className="text-sm text-text-muted leading-relaxed">{feature.description}</p>
+                  </div>
+                  <div className="flex-1 w-full">
+                    <div className="aspect-video rounded-2xl border border-border bg-surface/60 shadow-sm" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Integrations */}
+        <section className="mx-auto max-w-7xl px-4 py-20 lg:px-8">
+          <div className="text-center mb-10">
+            <h2 className="text-xl font-semibold text-text-heading">
+              SEAMLESS WORKFLOW / Integrate Critical Workflows
+            </h2>
+            <Link href="#" className="mt-2 inline-block text-sm text-primary hover:text-primary-dark transition">
+              Explore all integrations
+            </Link>
+          </div>
+
+          <div className="flex flex-wrap justify-center gap-3">
+            {integrations.map((name) => (
+              <span
+                key={name}
+                className="rounded-full border border-border bg-surface/60 px-4 py-2 text-xs font-medium text-text-muted"
+              >
+                {name}
+              </span>
+            ))}
+          </div>
+        </section>
+
+        {/* Testimonials */}
+        <section className="border-y border-border/60 bg-background-secondary/40">
+          <div className="mx-auto max-w-7xl px-4 py-20 lg:px-8">
+            <h2 className="text-center text-xl font-semibold text-text-heading mb-10">Hear from our users</h2>
+
+            <div className="grid gap-6 lg:gap-8 grid-cols-1 md:grid-cols-2">
+              {testimonials.map((item) => (
+                <div key={item.name} className="rounded-2xl border border-border bg-surface/70 p-6 shadow-sm">
+                  <div className="flex gap-1 mb-4">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className="h-4 w-4 fill-primary text-primary" />
+                    ))}
+                  </div>
+                  <p className="text-sm text-text-body leading-relaxed mb-4">“{item.quote}”</p>
+                  <div>
+                    <p className="text-sm font-semibold text-text-heading">{item.name}</p>
+                    <p className="text-xs text-text-muted">{item.title}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Pricing */}
+        <section id="pricing" className="mx-auto max-w-7xl px-4 py-20 lg:px-8">
+          <div className="text-center mb-10">
+            <p className="text-xs uppercase tracking-widest text-primary font-medium">Simple Pricing</p>
+            <h2 className="mt-3 text-2xl lg:text-3xl font-semibold text-text-heading">Start Free. Upgrade as You Grow.</h2>
+            <p className="mt-2 text-sm text-text-muted">All plans are currently free during our limited-time launch.</p>
+
+            <div className="mt-6 inline-flex items-center gap-3 rounded-full border border-border bg-surface/60 p-1">
+              <button
+                onClick={() => setBillingYearly(false)}
+                className={`rounded-full px-4 py-1.5 text-xs font-medium transition ${
+                  !billingYearly ? 'bg-primary text-white' : 'text-text-muted hover:text-text-heading'
+                }`}
+              >
+                Monthly
+              </button>
+              <button
+                onClick={() => setBillingYearly(true)}
+                className={`rounded-full px-4 py-1.5 text-xs font-medium transition ${
+                  billingYearly ? 'bg-primary text-white' : 'text-text-muted hover:text-text-heading'
+                }`}
+              >
+                Yearly
+              </button>
+            </div>
+          </div>
+
+          <div className="grid gap-6 lg:gap-8 grid-cols-1 md:grid-cols-3">
+            {pricingPlans.map((plan) => (
+              <div
+                key={plan.name}
+                className={`relative rounded-2xl border bg-surface/70 p-6 ${
+                  plan.popular ? 'border-primary shadow-[0_20px_50px_rgba(59,130,246,0.12)]' : 'border-border'
+                }`}
+              >
+                {plan.popular && (
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-white">
+                    Most Popular
+                  </span>
+                )}
+                <div className="text-center">
+                  <h3 className="text-base font-semibold text-text-heading">{plan.name}</h3>
+                  <p className="mt-2 text-xs text-text-muted">{plan.description}</p>
+                  <div className="mt-4">
+                    <span className="text-3xl font-semibold text-text-heading">
+                      {plan.price}
+                    </span>
+                    <span className="text-sm text-text-muted">{plan.period}</span>
+                  </div>
+                </div>
+
+                <ul className="mt-6 space-y-2.5">
+                  {plan.features.map((feature) => (
+                    <li key={feature} className="flex items-center gap-2 text-xs text-text-muted">
+                      <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+
+                <Link
+                  href={plan.cta === 'Contact Sales' ? '#contact' : '/register'}
+                  className={`mt-6 block w-full rounded-full py-2.5 text-center text-sm font-medium transition ${
+                    plan.popular
+                      ? 'bg-primary text-white hover:bg-primary-dark'
+                      : 'border border-border text-text-heading hover:bg-surface-hover'
+                  }`}
+                >
+                  {plan.cta}
+                </Link>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* FAQ */}
+        <section id="faq" className="border-y border-border/60 bg-background-secondary/40">
+          <div className="mx-auto max-w-3xl px-4 py-20 lg:px-8">
+            <div className="text-center mb-10">
+              <p className="text-xs uppercase tracking-widest text-primary font-medium">FAQ</p>
+              <h2 className="mt-3 text-2xl font-semibold text-text-heading">Frequently asked questions</h2>
+            </div>
+
+            <div className="space-y-3">
+              {faqs.map((item) => {
+                const isOpen = openFaq === item.question;
+                return (
+                  <div key={item.question} className="rounded-2xl border border-border bg-surface/70">
+                    <button
+                      onClick={() => setOpenFaq(isOpen ? null : item.question)}
+                      className="flex w-full items-center justify-between px-5 py-4 text-left"
+                    >
+                      <span className="text-sm font-semibold text-text-heading">{item.question}</span>
+                      <ChevronDown
+                        className={`h-4 w-4 text-text-muted transition-transform ${
+                          isOpen ? 'rotate-180' : ''
+                        }`}
+                      />
+                    </button>
+                    {isOpen && (
+                      <div className="px-5 pb-4 text-sm text-text-muted leading-relaxed">
+                        {item.answer}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* Final CTA */}
+        <section id="contact" className="mx-auto max-w-7xl px-4 py-20 lg:px-8">
+          <div className="text-center rounded-3xl border border-border bg-surface/70 p-10 lg:p-16 shadow-sm">
+            <div className="flex items-center justify-center gap-2 mb-6">
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/15">
+                <Bot className="h-4 w-4 text-primary" />
+              </div>
+              <span className="text-base font-semibold text-text-heading">Estech AI</span>
+            </div>
+            <h2 className="text-2xl lg:text-3xl font-semibold text-text-heading">Run your Business the Smart Way!</h2>
+            <p className="mx-auto mt-3 max-w-xl text-sm text-text-muted">
+              Join thousands of businesses already using Estech to automate operations, close more deals, and grow with confidence.
+            </p>
+            <Link
+              href="/register"
+              className="mt-6 inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-white hover:bg-primary-dark transition shadow-[0_16px_40px_rgba(59,130,246,0.25)]"
+            >
+              Try it now
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </section>
+
+        {/* Footer */}
+        <footer className="border-t border-border/60 bg-background-secondary/40">
+          <div className="mx-auto max-w-7xl px-4 py-12 lg:px-8">
+            <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
+              <div className="flex flex-col sm:flex-row items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/15">
+                    <Bot className="h-3.5 w-3.5 text-primary" />
+                  </div>
+                  <span className="text-sm font-semibold text-text-heading">Estech AI</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="email"
+                    placeholder="Enter your email"
+                    className="rounded-full border border-border bg-surface/60 px-4 py-2 text-xs text-text-heading placeholder:text-text-muted outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  />
+                  <button className="rounded-full bg-primary px-4 py-2 text-xs font-medium text-white hover:bg-primary-dark transition">
+                    Subscribe
+                  </button>
+                </div>
+              </div>
+
+              <p className="text-xs text-text-muted">© {new Date().getFullYear()} Estech AI. All rights reserved.</p>
+
+              <div className="flex items-center gap-6 text-xs text-text-muted">
+                <Link href="#" className="hover:text-text-heading transition">Blog</Link>
+                <Link href="#" className="hover:text-text-heading transition">Contact</Link>
+                <Link href="#" className="hover:text-text-heading transition">Privacy Policy</Link>
+                <Link href="#" className="hover:text-text-heading transition">Terms</Link>
+              </div>
+            </div>
+          </div>
+        </footer>
+      </div>
+    </div>
   );
 }
