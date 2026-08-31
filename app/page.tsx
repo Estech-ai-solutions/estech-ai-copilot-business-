@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Script from 'next/script';
 import {
   ArrowRight,
   Bot,
@@ -16,15 +17,27 @@ import {
   Users,
   Sparkles,
   ChevronDown,
-  Star,
   Menu,
   X,
-  BarChart3,
-  Mail,
-  Phone,
+  Star,
   Search,
-  Workflow,
+  Mail,
 } from 'lucide-react';
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'Estech AI Business Copilot',
+  applicationCategory: 'BusinessApplication',
+  operatingSystem: 'Web',
+  description: 'AI-assisted workspace for small businesses. Manage leads, communications, documents, knowledge, and content with an AI that learns your business.',
+  url: 'https://estech-ai.com',
+  provider: {
+    '@type': 'Organization',
+    name: 'Estech AI Solutions',
+    email: 'business@estech-ai.com',
+  },
+};
 
 const features = [
   {
@@ -38,14 +51,14 @@ const features = [
     href: '/responses',
     icon: MessageSquare,
     title: 'Communication Studio',
-    description: 'Generate professional customer replies, proposals, and outreach messages in seconds.',
+    description: 'Generate professional customer replies, sales responses, and outreach messages in seconds.',
     accent: 'Messaging',
   },
   {
     href: '/documents',
     icon: FileText,
     title: 'Document Studio',
-    description: 'Create quotes, proposals, invoices, contracts, and reports ready to download as PDF or DOCX.',
+    description: 'Create quotes, proposals, invoices, contracts, and reports ready to download.',
     accent: 'Documents',
   },
   {
@@ -74,18 +87,18 @@ const features = [
 const benefits = [
   {
     icon: Zap,
-    title: 'AI-Powered Automation',
-    description: 'Automate invoicing, follow-ups, and documentation with an AI that learns your business.',
+    title: 'AI-Assisted Workflows',
+    description: 'Automate repetitive work with an AI that learns your business context.',
   },
   {
     icon: Shield,
-    title: 'Secure & Private',
-    description: 'Enterprise-grade security with Supabase, row-level policies, and encrypted storage.',
+    title: 'Private by Design',
+    description: 'Your workspace data is scoped to your account. We use standard security practices to protect it.',
   },
   {
     icon: Users,
-    title: 'Team Ready',
-    description: 'Built for small teams, founders, and solo operators who need more with less.',
+    title: 'Built for Small Teams',
+    description: 'Designed for founders, operators, and small teams who need more with less.',
   },
 ];
 
@@ -93,7 +106,7 @@ const coreFeatures = [
   {
     title: 'Lead Intelligence',
     description:
-      'Discover new prospects, auto-score them, and manage outreach from one place. Prioritize high-value leads and close faster with built-in analytics.',
+      'Discover new prospects, auto-score them, and manage outreach from one place. Prioritize high-value leads and close faster.',
     icon: Search,
   },
   {
@@ -105,7 +118,7 @@ const coreFeatures = [
   {
     title: 'Document Studio',
     description:
-      'Create quotes, proposals, invoices, contracts, and reports formatted for clients. Download as PDF or DOCX and send instantly.',
+      'Create quotes, proposals, invoices, contracts, and reports formatted for clients. Save and download documents directly from the workspace.',
     icon: FileText,
   },
   {
@@ -123,24 +136,24 @@ const coreFeatures = [
 ];
 
 const integrations = [
-  'Zendesk',
-  'Outlook',
-  'Calendly',
-  'Gmail',
   'Stripe',
   'PayPal',
+  'Gmail',
+  'Outlook',
+  'Calendly',
+  'Zendesk',
 ];
 
 const testimonials = [
   {
-    quote: 'Estech replaced three separate tools for us. The AI actually understands our business context, not just generic templates.',
-    name: 'Sarah Chen',
-    title: 'SME Owner',
+    quote: 'Estech helps us keep client communication and documents in one place. The AI suggestions save time on repetitive tasks.',
+    name: 'Early User',
+    title: 'Small Business Operator',
   },
   {
-    quote: 'We cut our invoice follow-up time by 70%. The payment prediction alone paid for the subscription in the first month.',
-    name: 'Marcus Johnson',
-    title: 'Freelancer',
+    quote: 'The Business Brain feature is useful. It remembers our services and uses that context when drafting replies and documents.',
+    name: 'Early User',
+    title: 'Founder',
   },
 ];
 
@@ -150,16 +163,16 @@ const pricingPlans = [
     price: 'Free',
     period: 'limited time',
     description: 'For solo founders and freelancers getting started.',
-    features: ['1 workspace', '5 AI requests/day', 'Basic analytics', 'Email support'],
-    cta: 'Start Free Trial',
+    features: ['1 workspace', 'Basic AI assistance', 'Core features', 'Email support'],
+    cta: 'Create Free Account',
   },
   {
     name: 'Professional',
     price: 'Free',
     period: 'limited time',
     description: 'For growing teams that need more power and collaboration.',
-    features: ['5 workspaces', 'Unlimited AI requests', 'Advanced analytics', 'Priority support', 'Integrations'],
-    cta: 'Start Free Trial',
+    features: ['5 workspaces', 'Advanced AI assistance', 'All core features', 'Priority support'],
+    cta: 'Create Free Account',
     popular: true,
   },
   {
@@ -167,23 +180,23 @@ const pricingPlans = [
     price: 'Free',
     period: 'limited time',
     description: 'For organizations that need control, security, and scale.',
-    features: ['Unlimited workspaces', 'Unlimited AI requests', 'Custom analytics', 'Dedicated support', 'SSO & audit logs'],
+    features: ['Unlimited workspaces', 'Advanced AI assistance', 'All core features', 'Dedicated support'],
     cta: 'Contact Sales',
   },
 ];
 
 const faqs = [
   {
-    question: 'How does the free trial work?',
-    answer: 'All plans are currently free during our limited-time launch. Create an account and get full access to every feature with no credit card required.',
+    question: 'How does the free early access work?',
+    answer: 'All plans are currently free during our limited-time launch. Create an account and get access to the available features with no credit card required.',
   },
   {
     question: 'Can I switch plans later?',
-    answer: 'Yes. You can upgrade or downgrade at any time. Changes take effect immediately.',
+    answer: 'Yes. You can change your workspace or plan settings as your needs evolve.',
   },
   {
     question: 'Is my business data secure?',
-    answer: 'Yes. All data is encrypted in transit and at rest. We use Supabase for storage with row-level security, and we never train models on your private data.',
+    answer: 'We use standard security practices including encrypted connections and access control. Your workspace data is scoped to your account.',
   },
   {
     question: 'Do you offer refunds?',
@@ -198,7 +211,11 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-background text-text-body">
-      {/* Blueprint grid background */}
+      <Script
+        id="json-ld"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <div
         className="fixed inset-0 z-0 opacity-[0.18]"
         style={{
@@ -222,9 +239,8 @@ export default function HomePage() {
             <div className="hidden md:flex items-center gap-8 text-sm font-medium text-text-muted">
               <Link href="#features" className="hover:text-text-heading transition">Features</Link>
               <Link href="#pricing" className="hover:text-text-heading transition">Pricing</Link>
-              <Link href="#about" className="hover:text-text-heading transition">About Us</Link>
-              <Link href="#faq" className="hover:text-text-heading transition">FAQ</Link>
-              <Link href="#contact" className="hover:text-text-heading transition">Contact</Link>
+              <Link href="/about" className="hover:text-text-heading transition">About</Link>
+              <Link href="/contact" className="hover:text-text-heading transition">Contact</Link>
             </div>
 
             <div className="hidden md:flex items-center gap-3 text-sm">
@@ -250,11 +266,10 @@ export default function HomePage() {
           {mobileOpen && (
             <div className="md:hidden border-t border-border/60 bg-background/95 backdrop-blur-xl">
               <div className="px-4 py-4 space-y-3 text-sm font-medium text-text-muted">
-                <Link href="#features" className="block hover:text-text-heading">Features</Link>
-                <Link href="#pricing" className="block hover:text-text-heading">Pricing</Link>
-                <Link href="#about" className="block hover:text-text-heading">About Us</Link>
-                <Link href="#faq" className="block hover:text-text-heading">FAQ</Link>
-                <Link href="#contact" className="block hover:text-text-heading">Contact</Link>
+                <Link href="#features" className="block hover:text-text-heading" onClick={() => setMobileOpen(false)}>Features</Link>
+                <Link href="#pricing" className="block hover:text-text-heading" onClick={() => setMobileOpen(false)}>Pricing</Link>
+                <Link href="/about" className="block hover:text-text-heading" onClick={() => setMobileOpen(false)}>About</Link>
+                <Link href="/contact" className="block hover:text-text-heading" onClick={() => setMobileOpen(false)}>Contact</Link>
                 <div className="pt-3 flex flex-col gap-2">
                   <Link href="/login" className="block text-center text-text-muted hover:text-text-heading">Sign In</Link>
                   <Link href="/register" className="block text-center rounded-full bg-primary px-4 py-2 text-white text-center hover:bg-primary-dark transition">Sign Up</Link>
@@ -269,15 +284,15 @@ export default function HomePage() {
           <div className="text-center">
             <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
               <Sparkles className="h-3.5 w-3.5" />
-              Run your Business Smarter with AI
+              AI Business Copilot
             </span>
 
             <h1 className="mx-auto mt-6 max-w-4xl text-4xl font-semibold tracking-tight text-text-heading sm:text-5xl lg:text-6xl">
-              Smarter Business Management & Analytics Powered by AI
+              Teach Estech your business. Then let it help you run it.
             </h1>
 
             <p className="mx-auto mt-5 max-w-2xl text-base text-text-muted sm:text-lg leading-relaxed">
-              Estech unifies leads, communications, documents, knowledge, and content into one intelligent workspace—so you can focus on growing the business that matters.
+              An AI assistant that learns your customers, documents, and knowledge—so you can spend less time on repetitive work and more time growing the business.
             </p>
 
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -285,17 +300,15 @@ export default function HomePage() {
                 href="/register"
                 className="rounded-full bg-primary px-6 py-3 text-sm font-medium text-white hover:bg-primary-dark transition shadow-[0_16px_40px_rgba(59,130,246,0.25)]"
               >
-                Start Free Trial
+                Get Started Free
               </Link>
               <Link
                 href="#features"
                 className="rounded-full border border-border bg-surface/60 px-6 py-3 text-sm font-medium text-text-heading hover:bg-surface-hover transition"
               >
-                Watch Demo
+                See Features
               </Link>
             </div>
-
-            <p className="mt-4 text-xs text-text-muted">10K+ businesses already growing smarter</p>
 
             <div className="mt-12 relative mx-auto max-w-5xl">
               <div className="rounded-2xl border border-border bg-surface/80 shadow-2xl shadow-black/20 overflow-hidden">
@@ -307,14 +320,13 @@ export default function HomePage() {
                 <div className="p-6 sm:p-8">
                   <div className="grid grid-cols-3 gap-4">
                     {[
-                      { label: 'Revenue', value: '$48.2K', change: '+12.5%' },
-                      { label: 'Leads', value: '1,284', change: '+8.1%' },
-                      { label: 'Conversion', value: '24.8%', change: '+3.2%' },
+                      { label: 'Workspaces', value: 'Active' },
+                      { label: 'AI Assistance', value: 'Available' },
+                      { label: 'Knowledge', value: 'Remembered' },
                     ].map((stat) => (
                       <div key={stat.label} className="rounded-xl border border-border bg-background-secondary/60 p-4">
                         <p className="text-xs text-text-muted">{stat.label}</p>
                         <p className="mt-1 text-xl font-semibold text-text-heading">{stat.value}</p>
-                        <p className="mt-1 text-xs text-success font-medium">{stat.change}</p>
                       </div>
                     ))}
                   </div>
@@ -397,9 +409,7 @@ export default function HomePage() {
             <h2 className="text-xl font-semibold text-text-heading">
               SEAMLESS WORKFLOW / Integrate Critical Workflows
             </h2>
-            <Link href="#" className="mt-2 inline-block text-sm text-primary hover:text-primary-dark transition">
-              Explore all integrations
-            </Link>
+            <p className="mt-2 text-sm text-text-muted">Connect with the tools you already use.</p>
           </div>
 
           <div className="flex flex-wrap justify-center gap-3">
@@ -417,7 +427,7 @@ export default function HomePage() {
         {/* Testimonials */}
         <section className="border-y border-border/60 bg-background-secondary/40">
           <div className="mx-auto max-w-7xl px-4 py-20 lg:px-8">
-            <h2 className="text-center text-xl font-semibold text-text-heading mb-10">Hear from our users</h2>
+            <h2 className="text-center text-xl font-semibold text-text-heading mb-10">What early users are saying</h2>
 
             <div className="grid gap-6 lg:gap-8 grid-cols-1 md:grid-cols-2">
               {testimonials.map((item) => (
@@ -499,7 +509,7 @@ export default function HomePage() {
                 </ul>
 
                 <Link
-                  href={plan.cta === 'Contact Sales' ? '#contact' : '/register'}
+                  href={plan.cta === 'Contact Sales' ? '/contact' : '/register'}
                   className={`mt-6 block w-full rounded-full py-2.5 text-center text-sm font-medium transition ${
                     plan.popular
                       ? 'bg-primary text-white hover:bg-primary-dark'
@@ -550,7 +560,7 @@ export default function HomePage() {
         </section>
 
         {/* Final CTA */}
-        <section id="contact" className="mx-auto max-w-7xl px-4 py-20 lg:px-8">
+        <section className="mx-auto max-w-7xl px-4 py-20 lg:px-8">
           <div className="text-center rounded-3xl border border-border bg-surface/70 p-10 lg:p-16 shadow-sm">
             <div className="flex items-center justify-center gap-2 mb-6">
               <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/15">
@@ -560,7 +570,7 @@ export default function HomePage() {
             </div>
             <h2 className="text-2xl lg:text-3xl font-semibold text-text-heading">Run your Business the Smart Way!</h2>
             <p className="mx-auto mt-3 max-w-xl text-sm text-text-muted">
-              Join thousands of businesses already using Estech to automate operations, close more deals, and grow with confidence.
+              Join early users exploring AI-assisted customer, sales, and document workflows.
             </p>
             <Link
               href="/register"
@@ -598,10 +608,10 @@ export default function HomePage() {
               <p className="text-xs text-text-muted">© {new Date().getFullYear()} Estech AI. All rights reserved.</p>
 
               <div className="flex items-center gap-6 text-xs text-text-muted">
-                <Link href="#" className="hover:text-text-heading transition">Blog</Link>
-                <Link href="#" className="hover:text-text-heading transition">Contact</Link>
-                <Link href="#" className="hover:text-text-heading transition">Privacy Policy</Link>
-                <Link href="#" className="hover:text-text-heading transition">Terms</Link>
+                <Link href="/about" className="hover:text-text-heading transition">About</Link>
+                <Link href="/contact" className="hover:text-text-heading transition">Contact</Link>
+                <Link href="/privacy" className="hover:text-text-heading transition">Privacy</Link>
+                <Link href="/terms" className="hover:text-text-heading transition">Terms</Link>
               </div>
             </div>
           </div>

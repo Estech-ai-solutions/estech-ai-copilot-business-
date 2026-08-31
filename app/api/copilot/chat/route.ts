@@ -61,9 +61,10 @@ export async function POST(request: NextRequest) {
   let systemPrompt = 'You are Estech AI Business Copilot.\n\n';
   systemPrompt += 'Below is trusted business knowledge from the user\'s Business Brain.\n';
   systemPrompt += 'Use this knowledge when answering.\n\n';
-  systemPrompt += 'If the information exists in the Business Brain, answer from it.\n';
+  systemPrompt += 'If the information exists in the Business Brain, answer from it naturally.\n';
   systemPrompt += 'If it does not exist, say you do not know.\n';
-  systemPrompt += 'Never ignore the provided knowledge.\n\n';
+  systemPrompt += 'Never ignore the provided knowledge.\n';
+  systemPrompt += 'When you use knowledge, mention the source naturally in your answer, like "Based on your Delivery Policy..." instead of copying raw source metadata.\n\n';
 
   if (knowledgeContextStr) {
     systemPrompt += knowledgeContextStr + '\n';

@@ -196,7 +196,7 @@ export function buildKnowledgeContext(
   }
 
   const parts: string[] = [
-    'Use the following knowledge base entries to answer the user\'s question. Always cite the source using the provided title and category.',
+    'Use the following knowledge base entries to answer the user\'s question.',
     '',
   ];
 
@@ -205,7 +205,7 @@ export function buildKnowledgeContext(
       ? `${result.title} (${result.category} — ${result.original_filename})`
       : `${result.title} (${result.category})`;
 
-    parts.push(`[Source: ${sourceInfo}]`);
+    parts.push(`Source: ${sourceInfo}`);
     parts.push(result.content.trim());
     parts.push('');
   }

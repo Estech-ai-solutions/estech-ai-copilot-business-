@@ -15,8 +15,8 @@ export const viewport: Viewport = {
 } as Viewport;
 
 export const metadata: Metadata = {
-  title: 'Estech AI Business Copilot',
-  description: 'AI-powered business operating system for small teams, creators, and entrepreneurs.',
+  title: 'Estech AI Business Copilot | AI Assistant for Small Businesses',
+  description: 'AI-assisted workspace for small businesses. Manage leads, communications, documents, knowledge, and content with an AI that learns your business.',
   applicationName: 'Estech AI',
   appleWebApp: {
     capable: true,
@@ -29,6 +29,18 @@ export const metadata: Metadata = {
     apple: '/favicon.svg',
   },
   manifest: '/manifest.json',
+  openGraph: {
+    title: 'Estech AI Business Copilot',
+    description: 'AI-assisted workspace for small businesses. Manage leads, communications, documents, knowledge, and content with an AI that learns your business.',
+    url: 'https://estech-ai.com',
+    siteName: 'Estech AI',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Estech AI Business Copilot',
+    description: 'AI-assisted workspace for small businesses. Manage leads, communications, documents, knowledge, and content with an AI that learns your business.',
+  },
 } as Metadata;
 
 export default function RootLayout({ children }: { children: ReactNode }) {
