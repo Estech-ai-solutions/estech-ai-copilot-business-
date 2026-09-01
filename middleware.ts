@@ -11,7 +11,7 @@ export async function middleware(request: NextRequest) {
 
   const onboardingRoute = '/onboarding';
 
-  const authRoutes = ['/login', '/register', '/forgot-password', '/reset-password', '/verify-email'];
+  const authRoutes = ['/login', '/register', '/forgot-password', '/verify-email'];
 
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
   const isAuthRoute = authRoutes.some(route => pathname.startsWith(route));
