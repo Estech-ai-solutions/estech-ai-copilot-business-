@@ -61,7 +61,7 @@ Examples:
 - "Remind me to follow up with John" → intent: task, action: open_tasks
 - "What do you know about our delivery policy?" → intent: business_question, action: answer
 
-Business name: ${workspaceName || 'your business'}`;
+  Business context: user workspace${workspaceName ? ` named "${workspaceName}"` : ''}`;
 
   const response = await generateAiResponse(classificationPrompt, undefined, { maxTokens: 600 });
   const text = response.text || '';

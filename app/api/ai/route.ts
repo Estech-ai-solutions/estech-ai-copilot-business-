@@ -52,10 +52,10 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (ws) {
-      context = `You are a business consultant for ${ws.name}.`;
+      context = `You are a business assistant for the user's workspace. Use the Business Brain knowledge base below to answer questions about their actual business. Do not treat the workspace name as the business name unless it is explicitly provided in the knowledge base.`;
 
       if (ws.description) {
-        context += `\n\nBusiness Description: ${ws.description}`;
+        context += `\n\nWorkspace description: ${ws.description}`;
       }
     }
 

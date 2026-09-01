@@ -11,6 +11,7 @@ import {
 import { PageHeader, StatCard, Section, Badge, Button, Input, Alert } from '@/components/ui';
 import { useSupabaseContext } from '@/providers/supabase-provider';
 import { supabase } from '@/lib/supabase';
+import { formatResponseText } from '@/lib/utils';
 
 type Lead = {
   id: string;
@@ -94,7 +95,7 @@ export default function DashboardPage() {
         }
 
         const workspaceId = ws.id;
-        setBusinessName(ws.name || 'your business');
+        setBusinessName((ws.name || 'your business').trim());
 
         const [docData, taskData, knowledgeData, leadsData] = await Promise.all([
           supabase.from('documents').select('*').eq('workspace_id', workspaceId).order('created_at', { ascending: false }).limit(5),
@@ -278,7 +279,10 @@ export default function DashboardPage() {
 
               {aiSuggestion && (
                 <div className="mt-4 rounded-xl border border-border/40 bg-background-secondary/40 p-4">
-                  <p className="text-sm text-text-heading leading-6 mb-3">{aiSuggestion.message}</p>
+                  <div
+                    className="text-sm text-text-heading leading-6 mb-3"
+                    dangerouslySetInnerHTML={{ __html: formatResponseText(aiSuggestion.message) }}
+                  />
                   {aiSuggestion.action && (
                     <Button
                       onClick={handleAiAction}
