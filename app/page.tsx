@@ -318,7 +318,7 @@ export default function HomePage() {
                   <span className="h-2.5 w-2.5 rounded-full bg-success/80" />
                 </div>
                 <div className="p-6 sm:p-8">
-                  <div className="grid grid-cols-3 gap-4">
+                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     {[
                       { label: 'Workspaces', value: 'Active' },
                       { label: 'AI Assistance', value: 'Available' },
@@ -386,7 +386,7 @@ export default function HomePage() {
                   } items-center gap-10 lg:gap-16`}
                 >
                   <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-4">
+                    <div className="flex flex-wrap items-center gap-3 mb-4">
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15">
                         <feature.icon className="h-5 w-5 text-primary" />
                       </div>
@@ -475,7 +475,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="grid gap-6 lg:gap-8 grid-cols-1 md:grid-cols-3">
+          <div className="grid gap-6 lg:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {pricingPlans.map((plan) => (
               <div
                 key={plan.name}
@@ -561,7 +561,7 @@ export default function HomePage() {
 
         {/* Final CTA */}
         <section className="mx-auto max-w-7xl px-4 py-20 lg:px-8">
-          <div className="text-center rounded-3xl border border-border bg-surface/70 p-10 lg:p-16 shadow-sm">
+          <div className="text-center rounded-3xl border border-border bg-surface/70 p-6 sm:p-10 lg:p-16 shadow-sm">
             <div className="flex items-center justify-center gap-2 mb-6">
               <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/15">
                 <Bot className="h-4 w-4 text-primary" />
@@ -593,16 +593,16 @@ export default function HomePage() {
                   </div>
                   <span className="text-sm font-semibold text-text-heading">Estech AI</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="email"
-                    placeholder="Enter your email"
-                    className="rounded-full border border-border bg-surface/60 px-4 py-2 text-xs text-text-heading placeholder:text-text-muted outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                  />
-                  <button className="rounded-full bg-primary px-4 py-2 text-xs font-medium text-white hover:bg-primary-dark transition">
-                    Subscribe
-                  </button>
-                </div>
+                 <div className="flex flex-col sm:flex-row items-center gap-3">
+                   <input
+                     type="email"
+                     placeholder="Enter your email"
+                     className="w-full sm:w-auto rounded-full border border-border bg-surface/60 px-4 py-2 text-xs text-text-heading placeholder:text-text-muted outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                   />
+                   <button className="w-full sm:w-auto rounded-full bg-primary px-4 py-2 text-xs font-medium text-white hover:bg-primary-dark transition">
+                     Subscribe
+                   </button>
+                 </div>
               </div>
 
               <p className="text-xs text-text-muted">© {new Date().getFullYear()} Estech AI. All rights reserved.</p>
