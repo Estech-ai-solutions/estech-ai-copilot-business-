@@ -6,6 +6,32 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Bot, Mail, Lock, ArrowLeft, AlertCircle, Loader2 } from 'lucide-react';
 
+function classifyAuthError(message: string): string {
+  const normalized = message.toLowerCase();
+
+  if (normalized.includes('not confirmed') || normalized.includes('email not confirmed') || normalized.includes('email_not_confirmed')) {
+    return 'Please verify your email before signing in. Check your inbox for the verification link.';
+  }
+
+  if (normalized.includes('too many requests') || normalized.includes('too_many_requests') || normalized.includes('rate limit')) {
+    return 'Too many sign-in attempts. Please wait a few minutes and try again.';
+  }
+
+  if (normalized.includes('invalid login credentials') || normalized.includes('invalid_credentials')) {
+    return 'Invalid email or password. Please check your credentials and try again.';
+  }
+
+  if (normalized.includes('user not found') || normalized.includes('user_not_found')) {
+    return 'No account found with this email. Please sign up first.';
+  }
+
+  if (normalized.includes('password should be at least') || normalized.includes('weak_password')) {
+    return 'Password does not meet requirements. Please use a stronger password.';
+  }
+
+  return message;
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -28,11 +54,7 @@ export default function LoginPage() {
       });
 
       if (error) {
-        if (error.message.toLowerCase().includes('not confirmed') || error.message.toLowerCase().includes('email not confirmed')) {
-          setError('Please verify your email before signing in. Check your inbox for the verification link.');
-        } else {
-          setError(error.message);
-        }
+        setError(classifyAuthError(error.message));
       } else       if (data.user) {
         // Check onboarding status
         const onboardingRes = await fetch('/api/onboarding/status');
@@ -90,13 +112,6 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="flex items-center gap-2 rounded-xl bg-danger/10 border border-danger/20 px-4 py-3">
-              <AlertCircle className="h-4 w-4 text-danger" />
-              <span className="text-sm text-danger">{error}</span>
-            </div>
-          )}
-
           <div>
             <label className="block text-xs font-medium text-text-heading mb-2">Email</label>
             <div className="relative">
