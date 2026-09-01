@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -12,13 +12,38 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [initializing, setInitializing] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    const hash = typeof window !== 'undefined' ? window.location.hash : '';
-    if (!hash.includes('type=recovery')) {
-      router.push('/login');
-    }
+    const initRecovery = async () => {
+      try {
+        const url = new URL(window.location.href);
+        const code = url.searchParams.get('code');
+
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) {
+            router.push('/login');
+            return;
+          }
+          setInitializing(false);
+          return;
+        }
+
+        const hash = window.location.hash;
+        if (!hash.includes('type=recovery')) {
+          router.push('/login');
+          return;
+        }
+      } catch {
+        router.push('/login');
+      } finally {
+        setInitializing(false);
+      }
+    };
+
+    initRecovery();
   }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -52,6 +77,14 @@ export default function ResetPasswordPage() {
       setLoading(false);
     }
   };
+
+  if (initializing) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-sm text-text-muted">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
