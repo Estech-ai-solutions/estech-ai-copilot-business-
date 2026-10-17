@@ -4,8 +4,11 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import SidebarNav from '@/components/sidebar-nav';
-import { Building2, Globe, MapPin, MessageSquare, Copy, Send, Tag, ArrowUpRight, Check, Brain, ExternalLink, Mail, Phone, MapPinned } from 'lucide-react';
+import { MobileNav } from '@/components/mobile-nav';
+import { useToast } from '@/components/toast';
+import { Building2, Globe, MapPin, Copy, Send, ArrowUpRight, Brain, ExternalLink, Mail, Phone, MapPinned, Loader2 } from 'lucide-react';
 import { PageHeader, Section, Badge, Button, Input } from '@/components/ui';
+import { formatResponseText } from '@/lib/utils';
 
 type Lead = {
   id: string;
@@ -53,6 +56,7 @@ const outreachTypes = ['Email', 'LinkedIn', 'WhatsApp', 'Cold Outreach'] as cons
 export default function LeadDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { addToast } = useToast();
   const leadId = params.id as string;
   const [lead, setLead] = useState<Lead | null>(null);
   const [outreach, setOutreach] = useState<Outreach[]>([]);
@@ -221,24 +225,29 @@ Respond with ONLY a valid JSON object. No markdown, no code fences, no extra tex
         })
       });
       const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Save failed');
       setOutreach((prev) => [json.outreach, ...prev]);
       setGeneratedMessage('');
+      addToast('Outreach message saved.', 'success');
     } catch {
-      alert('Failed to save outreach message.');
+      addToast('Could not save outreach message.', 'error');
     }
   }
 
   function copyToClipboard(text: string) {
+    if (!text) return;
     navigator.clipboard.writeText(text);
+    addToast('Copied to clipboard.', 'success');
   }
 
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
+        <MobileNav />
         <SidebarNav />
-        <main className="lg:pl-64">
-          <div className="px-6 py-8 lg:px-8">
-            <p className="text-text-muted">Loading lead...</p>
+        <main className="pt-14 lg:pt-0 lg:pl-64">
+          <div className="px-4 py-6 lg:px-8 lg:py-8">
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
           </div>
         </main>
       </div>
@@ -248,9 +257,10 @@ Respond with ONLY a valid JSON object. No markdown, no code fences, no extra tex
   if (!lead) {
     return (
       <div className="min-h-screen bg-background">
+        <MobileNav />
         <SidebarNav />
-        <main className="lg:pl-64">
-          <div className="px-6 py-8 lg:px-8">
+        <main className="pt-14 lg:pt-0 lg:pl-64">
+          <div className="px-4 py-6 lg:px-8 lg:py-8">
             <p className="text-text-muted">Lead not found.</p>
           </div>
         </main>
@@ -260,10 +270,11 @@ Respond with ONLY a valid JSON object. No markdown, no code fences, no extra tex
 
   return (
     <div className="min-h-screen bg-background">
+      <MobileNav />
       <SidebarNav />
 
-      <main className="lg:pl-64">
-        <div className="px-6 py-8 lg:px-8">
+      <main className="pt-14 lg:pt-0 lg:pl-64">
+        <div className="px-4 py-6 lg:px-8 lg:py-8">
           <PageHeader
             title={lead.business_name}
             description={`${lead.industry} • ${lead.location}`}
@@ -321,22 +332,26 @@ Respond with ONLY a valid JSON object. No markdown, no code fences, no extra tex
                       value={lead.status}
                       onChange={async (e) => {
                         const newStatus = e.target.value as Lead['status'];
-                        await fetch('/api/leads', {
-                          method: 'PUT',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ id: lead.id, status: newStatus })
-                        });
                         setLead({ ...lead, status: newStatus });
+                        try {
+                          await fetch('/api/leads', {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ id: lead.id, status: newStatus })
+                          });
+                          addToast('Status updated.', 'success');
+                        } catch {
+                          addToast('Could not update status.', 'error');
+                        }
                       }}
                       className="w-full rounded-xl border border-border/60 bg-background-secondary/60 px-3.5 py-2.5 text-sm text-text-heading outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
                     >
-                      <option value="New">New</option>
-                      <option value="Contacted">Contacted</option>
-                      <option value="Awaiting Reply">Awaiting Reply</option>
-                      <option value="Interested">Interested</option>
-                      <option value="Proposal Sent">Proposal Sent</option>
-                      <option value="Won">Won</option>
-                      <option value="Lost">Lost</option>
+                      <option value="new">New</option>
+                      <option value="contacted">Contacted</option>
+                      <option value="interested">Interested</option>
+                      <option value="proposal_sent">Proposal Sent</option>
+                      <option value="converted">Won</option>
+                      <option value="rejected">Lost</option>
                     </select>
                   </div>
                   {lead.source_url && (
@@ -384,7 +399,10 @@ Respond with ONLY a valid JSON object. No markdown, no code fences, no extra tex
                 )}
 
                 {generatingRecommendations && (
-                  <p className="text-sm text-text-muted">Generating recommendations...</p>
+                  <div className="flex items-center gap-2 text-sm text-text-muted">
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    Analysing this lead…
+                  </div>
                 )}
 
                 {recommendations && (
@@ -457,9 +475,10 @@ Respond with ONLY a valid JSON object. No markdown, no code fences, no extra tex
                           </Button>
                         </div>
                       </div>
-                      <pre className="max-h-72 overflow-y-auto rounded-xl border border-border/60 bg-background-secondary/40 p-4 text-sm text-text-heading whitespace-pre-wrap leading-6">
-                        {generatedMessage}
-                      </pre>
+                      <div
+                        className="max-h-72 overflow-y-auto rounded-xl border border-border/60 bg-background-secondary/40 p-4 text-sm leading-6 text-text-heading"
+                        dangerouslySetInnerHTML={{ __html: formatResponseText(generatedMessage) }}
+                      />
                     </div>
                   )}
                 </div>
@@ -542,8 +561,10 @@ function RecommendationCard({ title, content, onCopy }: {
   content: string;
   onCopy?: () => void;
 }) {
+  if (!content || !content.trim()) return null;
+
   return (
-    <div className="rounded-xl border border-border/30 bg-background-secondary/30 p-4">
+    <div className="rounded-xl border border-border/30 bg-background-secondary/30 p-4 transition hover:border-border/60">
       <div className="flex items-center justify-between mb-2">
         <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">{title}</p>
         {onCopy && (
@@ -556,7 +577,10 @@ function RecommendationCard({ title, content, onCopy }: {
           </button>
         )}
       </div>
-      <p className="text-sm text-text-heading leading-6 whitespace-pre-wrap">{content}</p>
+      <div
+        className="text-sm text-text-heading leading-6"
+        dangerouslySetInnerHTML={{ __html: formatResponseText(content) }}
+      />
     </div>
   );
 }

@@ -287,9 +287,9 @@ export default function HomePage() {
               AI Business Copilot
             </span>
 
-            <h1 className="mx-auto mt-6 max-w-4xl text-4xl font-semibold tracking-tight text-text-heading sm:text-5xl lg:text-6xl">
-              Teach Estech your business. Then let it help you run it.
-            </h1>
+             <h1 className="mx-auto mt-6 max-w-4xl text-4xl font-semibold tracking-tight text-text-heading sm:text-5xl lg:text-6xl">
+               Stop guessing. Start growing.
+             </h1>
 
             <p className="mx-auto mt-5 max-w-2xl text-base text-text-muted sm:text-lg leading-relaxed">
               An AI assistant that learns your customers, documents, and knowledge—so you can spend less time on repetitive work and more time growing the business.
