@@ -37,6 +37,7 @@ export default function ContactPage() {
             e.preventDefault();
             setSent(true);
           }}
+          
         >
           <div>
             <label className="block text-xs font-medium text-text-heading mb-2">Subject</label>

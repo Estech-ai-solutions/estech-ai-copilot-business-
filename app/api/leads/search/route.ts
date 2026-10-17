@@ -3,7 +3,7 @@ import { generateAiResponse } from '@/lib/ai';
 import { retrieveRelevantKnowledge, buildKnowledgeContext } from '@/lib/knowledge/retrieval';
 import { getUserAndWorkspace } from '@/lib/auth-server';
 
-type LeadSource = 'web' | 'linkedin' | 'jobs' | 'directories';
+export type LeadSource = 'web' | 'linkedin' | 'jobs' | 'directories';
 
 const SOURCE_META: Record<LeadSource, { label: string; siteFilter: string; hint: string }> = {
   web: {
@@ -63,146 +63,183 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: result.error }, { status: 401 });
   }
 
-  const { supabase, userId, workspaceId } = result;
-  const body = await request.json();
+   const { supabase, userId, workspaceId } = result;
+   const body = await request.json();
 
-  const rawSource = String(body?.source || 'web');
-  const source: LeadSource = (Object.keys(SOURCE_META) as LeadSource[]).includes(rawSource as LeadSource)
-    ? (rawSource as LeadSource)
-    : 'web';
+   const rawSources = Array.isArray(body?.sources) ? body.sources : Array.isArray(body?.source) ? body.source : [body?.source || 'web'];
+   const sources: LeadSource[] = [];
+   
+   // Validate and collect unique sources
+   const seen = new Set<string>();
+   for (const item of rawSources) {
+     const sourceStr = String(item);
+     if (Object.keys(SOURCE_META).includes(sourceStr) && !seen.has(sourceStr)) {
+       seen.add(sourceStr);
+       sources.push(sourceStr as LeadSource);
+     }
+   }
+   
+   // Default to web if no valid sources provided
+   if (sources.length === 0) {
+     sources.push('web');
+   }
 
-  const targetIndustry = typeof body?.targetIndustry === 'string' ? body.targetIndustry.trim() : '';
-  const targetLocation = typeof body?.targetLocation === 'string' ? body.targetLocation.trim() : '';
-  const idealCustomer = typeof body?.idealCustomer === 'string' ? body.idealCustomer.trim() : '';
+   let firstOptimizedQuery = '';
 
-  if (!targetIndustry && !targetLocation && !idealCustomer) {
-    return NextResponse.json(
-      { error: 'Tell us what you are looking for — an industry, a location, or a description of your ideal customer.' },
-      { status: 400 }
-    );
-  }
+   const targetIndustry = typeof body?.targetIndustry === 'string' ? body.targetIndustry.trim() : '';
+   const targetLocation = typeof body?.targetLocation === 'string' ? body.targetLocation.trim() : '';
+   const idealCustomer = typeof body?.idealCustomer === 'string' ? body.idealCustomer.trim() : '';
 
-  const meta = SOURCE_META[source];
-  const userDescription = [idealCustomer, targetIndustry, targetLocation].filter(Boolean).join(' · ');
+   if (!targetIndustry && !targetLocation && !idealCustomer) {
+     return NextResponse.json(
+       { error: 'Tell us what you are looking for — an industry, a location, or a description of your ideal customer.' },
+       { status: 400 }
+     );
+   }
 
-  let optimizedQuery = [targetIndustry, targetLocation, 'businesses with contact details'].filter(Boolean).join(' ');
+   const tavilyApiKey = process.env.TAVILY_API_KEY;
+   if (!tavilyApiKey) {
+     return NextResponse.json(
+       { error: 'Lead discovery is not configured on this server. Add TAVILY_API_KEY to enable it.', leads: [] },
+       { status: 503 }
+     );
+   }
 
-  try {
-    const queryResponse = await generateAiResponse(
-      `You are an expert at building web search queries that surface REAL, contactable businesses.
+   // Search across all selected sources and combine results
+   let allSearchResults: any[] = [];
+   const searchPromises = sources.map(async (source, index) => {
+     const meta = SOURCE_META[source];
+     const userDescription = [idealCustomer, targetIndustry, targetLocation].filter(Boolean).join(' · ');
+     
+     let optimizedQuery = [targetIndustry, targetLocation, 'businesses with contact details'].filter(Boolean).join(' ');
+     
+     try {
+       const queryResponse = await generateAiResponse(
+         `You are an expert at building web search queries that surface REAL, contactable businesses.
+ 
+ ${meta.siteFilter ? `The query MUST include this search operator so results come from the right source: ${meta.siteFilter}` : ''}
+ 
+ Guidance for this source: ${meta.hint}
+ 
+ The user is looking for: "${userDescription}"
+ 
+ Write ONE search query (maximum 200 characters) that returns real business listings showing a business name plus a website, email or phone number.
+ - Do NOT request lists, statistics, guides, "top 10" articles, news, or research papers
+ - Do NOT wrap the query in quotes
+ Return ONLY the search query text.`,
+         'You are a precise search-query generator. You return only the query text and nothing else.',
+         { maxTokens: 200 }
+       );
+ 
+       const cleaned = (queryResponse.text || '')
+         .trim()
+         .replace(/^["'\s]+|["'\s]+$/g, '')
+         .replace(/\n+/g, ' ')
+         .trim();
+ 
+       const looksLikeError = /^(error|estech|ai is not configured|gemini|groq|mistral)/i.test(cleaned);
+       if (cleaned.length > 3 && cleaned.length <= 250 && !cleaned.includes('\n') && !looksLikeError) {
+         optimizedQuery = cleaned;
+       }
+       
+       // Store the first query for backward compatibility
+       if (index === 0) {
+         firstOptimizedQuery = optimizedQuery;
+       }
+     } catch (e) {
+       console.error(`Failed to optimize search query for source ${source}:`, e);
+       // Use the fallback query if AI optimization fails
+       if (index === 0) {
+         firstOptimizedQuery = optimizedQuery;
+       }
+     }
+     
+     // Execute search for this source
+     try {
+       const response = await fetch('https://api.tavily.com/search', {
+         method: 'POST',
+         headers: {
+           'Content-Type': 'application/json',
+           Authorization: `Bearer ${tavilyApiKey}`,
+         },
+         body: JSON.stringify({
+           query: optimizedQuery,
+           search_depth: 'advanced',
+           max_results: 10,
+           include_answer: false,
+         }),
+       });
+ 
+       if (!response.ok) throw new Error(`Tavily returned ${response.status}`);
+ 
+       const data = await response.json();
+       const results = Array.isArray(data.results) ? data.results : [];
+       // Add source information to each result for proper filtering
+       return results.map((result: any) => ({ ...result, _source: source }));
+     } catch (e) {
+       console.error(`Tavily search error for source ${source}:`, e);
+       return []; // Return empty array for this source if search fails
+     }
+   });
+ 
+   // Wait for all searches to complete
+   const sourceResults = await Promise.all(searchPromises);
+   
+   // Flatten results from all sources
+   allSearchResults = sourceResults.flat();
 
-${meta.siteFilter ? `The query MUST include this search operator so results come from the right source: ${meta.siteFilter}` : ''}
+   if (allSearchResults.length === 0) {
+     return NextResponse.json({
+       leads: [],
+       optimizedQuery: sources.map(s => SOURCE_META[s].label).join(', '),
+       message: `No businesses matched that search. Try a broader industry, a larger location, or different sources.`,
+     });
+   }
 
-Guidance for this source: ${meta.hint}
+   const relevantResults = allSearchResults.filter((item) => {
+     const url = String(item?.url || '');
+     const title = String(item?.title || '');
+     const source = item._source as LeadSource || 'web';
+     if (!isValidHttpUrl(url)) return false;
 
-The user is looking for: "${userDescription}"
+     if (source === 'web') {
+       if (LOW_QUALITY_HOSTS.some((host) => url.toLowerCase().includes(host))) return false;
+       if (LISTICLE_PATTERN.test(title) && !/\b(business|ltd|llc|inc|company|services|solutions)\b/i.test(title)) {
+         return false;
+       }
+     }
 
-Write ONE search query (maximum 200 characters) that returns real business listings showing a business name plus a website, email or phone number.
-- Do NOT request lists, statistics, guides, "top 10" articles, news, or research papers
-- Do NOT wrap the query in quotes
-Return ONLY the search query text.`,
-      'You are a precise search-query generator. You return only the query text and nothing else.',
-      { maxTokens: 200 }
-    );
+     return true;
+   });
 
-    const cleaned = (queryResponse.text || '')
-      .trim()
-      .replace(/^["'\s]+|["'\s]+$/g, '')
-      .replace(/\n+/g, ' ')
-      .trim();
+   if (relevantResults.length === 0) {
+     return NextResponse.json({
+       leads: [],
+       optimizedQuery: firstOptimizedQuery,
+       message: 'The search only returned articles and aggregator pages, not individual businesses. Try different sources.',
+     });
+   }
 
-    const looksLikeError = /^(error|estech|ai is not configured|gemini|groq|mistral)/i.test(cleaned);
-    if (cleaned.length > 3 && cleaned.length <= 250 && !cleaned.includes('\n') && !looksLikeError) {
-      optimizedQuery = cleaned;
+   let knowledgeContextStr = '';
+   if (workspaceId) {
+     try {
+       const knowledgeResults = await retrieveRelevantKnowledge(
+         supabase,
+         workspaceId,
+         [targetIndustry, targetLocation, idealCustomer].filter(Boolean).join(' '),
+         { limit: 3 }
+       );
+       knowledgeContextStr = buildKnowledgeContext(knowledgeResults);
+     } catch (error) {
+       console.error('Failed to retrieve relevant knowledge for leads:', error);
+     }
     }
-  } catch (e) {
-    console.error('Failed to optimize search query:', e);
-  }
 
-  const tavilyApiKey = process.env.TAVILY_API_KEY;
-  if (!tavilyApiKey) {
-    return NextResponse.json(
-      { error: 'Lead discovery is not configured on this server. Add TAVILY_API_KEY to enable it.', leads: [] },
-      { status: 503 }
-    );
-  }
+    // Keep track of the first query for backward compatibility
+    // (already declared above)
 
-  let searchResults: any[] = [];
-  try {
-    const response = await fetch('https://api.tavily.com/search', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${tavilyApiKey}`,
-      },
-      body: JSON.stringify({
-        query: optimizedQuery,
-        search_depth: 'advanced',
-        max_results: 10,
-        include_answer: false,
-      }),
-    });
-
-    if (!response.ok) throw new Error(`Tavily returned ${response.status}`);
-
-    const data = await response.json();
-    searchResults = Array.isArray(data.results) ? data.results : [];
-  } catch (e) {
-    console.error('Tavily search error:', e);
-    return NextResponse.json(
-      { error: 'Lead search is temporarily unavailable. Please try again in a moment.', leads: [] },
-      { status: 503 }
-    );
-  }
-
-  if (searchResults.length === 0) {
-    return NextResponse.json({
-      leads: [],
-      optimizedQuery,
-      message: `No businesses matched that search. Try a broader industry, a larger location, or a different source.`,
-    });
-  }
-
-  const relevantResults = searchResults.filter((item) => {
-    const url = String(item?.url || '');
-    const title = String(item?.title || '');
-    if (!isValidHttpUrl(url)) return false;
-
-    if (source === 'web') {
-      if (LOW_QUALITY_HOSTS.some((host) => url.toLowerCase().includes(host))) return false;
-      if (LISTICLE_PATTERN.test(title) && !/\b(business|ltd|llc|inc|company|services|solutions)\b/i.test(title)) {
-        return false;
-      }
-    }
-
-    return true;
-  });
-
-  if (relevantResults.length === 0) {
-    return NextResponse.json({
-      leads: [],
-      optimizedQuery,
-      message: 'The search only returned articles and aggregator pages, not individual businesses. Try a different source.',
-    });
-  }
-
-  let knowledgeContextStr = '';
-  if (workspaceId) {
-    try {
-      const knowledgeResults = await retrieveRelevantKnowledge(
-        supabase,
-        workspaceId,
-        [targetIndustry, targetLocation, idealCustomer].filter(Boolean).join(' '),
-        { limit: 3 }
-      );
-      knowledgeContextStr = buildKnowledgeContext(knowledgeResults);
-    } catch (error) {
-      console.error('Failed to retrieve relevant knowledge for leads:', error);
-    }
-  }
-
-  const analyzedLeads = await Promise.all(
-    relevantResults.map(async (item) => {
+   const analyzedLeads = await Promise.all(
+     relevantResults.map(async (item) => {
       const title = String(item?.title || '');
       const url = String(item?.url || '');
       const snippet = String(item?.snippet || item?.content || '');
@@ -338,26 +375,32 @@ Return ONLY valid JSON, no markdown:
     }
   }
 
-  await supabase.from('lead_searches').insert({
-    workspace_id: workspaceId,
-    query: optimizedQuery,
-    results_count: insertedCount,
-  });
+   await supabase.from('lead_searches').insert({
+     workspace_id: workspaceId,
+     query: JSON.stringify({
+       sources: sources,
+       targetIndustry: targetIndustry || undefined,
+       targetLocation: targetLocation || undefined,
+       idealCustomer: idealCustomer || undefined,
+       firstQuery: firstOptimizedQuery
+     }),
+     results_count: insertedCount,
+   });
 
-  if (insertedCount === 0) {
-    return NextResponse.json({
-      leads: [],
-      optimizedQuery,
-      message:
-        validLeads.length > 0
-          ? 'Every match found is already in your leads list.'
-          : 'No relevant businesses matched. Try a different industry, location, or source.',
-    });
-  }
+   if (insertedCount === 0) {
+     return NextResponse.json({
+       leads: [],
+       optimizedQuery: firstOptimizedQuery,
+       message:
+         validLeads.length > 0
+           ? 'Every match found is already in your leads list.'
+           : `No relevant businesses matched across ${sources.length} source${sources.length > 1 ? 's' : ''}. Try a different industry, location, or sources.`,
+     });
+   }
 
-  return NextResponse.json({
-    leads: validLeads,
-    insertedCount,
-    optimizedQuery,
-  });
+   return NextResponse.json({
+     leads: validLeads,
+     insertedCount,
+     optimizedQuery: firstOptimizedQuery,
+   });
 }

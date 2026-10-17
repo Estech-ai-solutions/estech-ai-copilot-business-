@@ -11,6 +11,7 @@ import {
 import { PageHeader, EmptyState, Section, Badge, Button, Input } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/toast';
+import type { LeadSource } from '@/app/api/leads/search/route';
 
 export const dynamic = 'force-dynamic';
 
@@ -103,7 +104,7 @@ function LeadsPageContent() {
   const [targetIndustry, setTargetIndustry] = useState(searchParams.get('industry') || '');
   const [targetLocation, setTargetLocation] = useState(searchParams.get('location') || '');
   const [idealCustomer, setIdealCustomer] = useState(searchParams.get('customer') || '');
-  const [source, setSource] = useState<string>('web');
+  const [sources, setSources] = useState<LeadSource[]>(['web']);
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [notice, setNotice] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
@@ -144,7 +145,7 @@ function LeadsPageContent() {
           targetIndustry: targetIndustry.trim() || null,
           targetLocation: targetLocation.trim() || null,
           idealCustomer: idealCustomer.trim() || null,
-          source,
+          sources,
         }),
       });
       const json = await res.json();
@@ -169,7 +170,7 @@ function LeadsPageContent() {
     } finally {
       setSearching(false);
     }
-  }, [targetIndustry, targetLocation, idealCustomer, source]);
+  }, [targetIndustry, targetLocation, idealCustomer, sources]);
 
   async function updateLeadStatus(id: string, status: LeadStatus) {
     setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, status } : l)));
@@ -272,28 +273,34 @@ function LeadsPageContent() {
                 />
               </div>
 
-              <div>
-                <p className="text-xs font-medium text-text-muted mb-2">Search source</p>
-                <div className="flex flex-wrap gap-2">
-                  {LEAD_SOURCES.map((s) => (
-                    <button
-                      key={s.id}
-                      type="button"
-                      onClick={() => setSource(s.id)}
-                      className={cn(
-                        'group flex items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-medium transition min-h-[44px]',
-                        source === s.id
-                          ? 'border-primary bg-primary/15 text-primary'
-                          : 'border-border/60 text-text-muted hover:bg-surface/60 hover:text-text-heading'
-                      )}
-                    >
-                      <s.icon className="h-4 w-4" />
-                      <span>{s.label}</span>
-                      <span className="hidden sm:inline text-[0.65rem] opacity-60">{s.hint}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
+               <div>
+                 <p className="text-xs font-medium text-text-muted mb-2">Search source</p>
+                 <div className="flex flex-wrap gap-2">
+                   {LEAD_SOURCES.map((s) => (
+                     <button
+                       key={s.id}
+                       type="button"
+                       onClick={() => {
+                         setSources(prev => 
+                           prev.includes(s.id) 
+                             ? prev.filter(id => id !== s.id) 
+                             : [...prev, s.id]
+                         );
+                       }}
+                       className={cn(
+                         'group flex items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-medium transition min-h-[44px]',
+                         sources.includes(s.id)
+                           ? 'border-primary bg-primary/15 text-primary'
+                           : 'border-border/60 text-text-muted hover:bg-surface/60 hover:text-text-heading'
+                       )}
+                     >
+                       <s.icon className="h-4 w-4" />
+                       <span>{s.label}</span>
+                       <span className="hidden sm:inline text-[0.65rem] opacity-60">{s.hint}</span>
+                     </button>
+                   ))}
+                 </div>
+               </div>
 
               {notice && (
                 <div
