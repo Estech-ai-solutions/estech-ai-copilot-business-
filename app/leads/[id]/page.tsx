@@ -273,8 +273,8 @@ Respond with ONLY a valid JSON object. No markdown, no code fences, no extra tex
       <MobileNav />
       <SidebarNav />
 
-      <main className="pt-14 lg:pt-0 ">
-        <div className="px-4 py-6 lg:px-8 lg:py-8">
+      <main className="pt-14 lg:pt-0 lg:pl-64">
+        <div className="px-4 py-6 lg:px-8 lg:py-8 max-w-5xl mx-auto">
           <PageHeader
             title={lead.business_name}
             description={`${lead.industry} • ${lead.location}`}
