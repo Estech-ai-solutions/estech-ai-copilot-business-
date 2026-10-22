@@ -245,7 +245,7 @@ Respond with ONLY a valid JSON object. No markdown, no code fences, no extra tex
       <div className="min-h-screen bg-background">
         <MobileNav />
         <SidebarNav />
-        <main className="pt-14 lg:pt-0">
+        <main className="pt-14 lg:pt-0 lg:pl-64">
           <div className="px-4 py-6 lg:px-8 lg:py-8 max-w-5xl mx-auto">
             <Loader2 className="h-5 w-5 animate-spin text-primary" />
           </div>
@@ -259,7 +259,7 @@ Respond with ONLY a valid JSON object. No markdown, no code fences, no extra tex
       <div className="min-h-screen bg-background">
         <MobileNav />
         <SidebarNav />
-        <main className="pt-14 lg:pt-0">
+        <main className="pt-14 lg:pt-0 lg:pl-64">
           <div className="px-4 py-6 lg:px-8 lg:py-8 max-w-5xl mx-auto">
             <p className="text-text-muted">Lead not found.</p>
           </div>

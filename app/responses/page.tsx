@@ -180,7 +180,7 @@ Return your response in the following JSON format only (no markdown, no extra te
     <div className="min-h-screen bg-background">
       <MobileNav />
       <SidebarNav />
-      <main className="pt-14 lg:pt-0">
+      <main className="pt-14 lg:pt-0 lg:pl-64">
         <div className="px-4 py-6 lg:px-8 lg:py-8">
           <PageHeader
             title="Communication Studio"
@@ -491,7 +491,7 @@ function ResponsesPageSkeleton() {
     <div className="min-h-screen bg-background">
       <MobileNav />
       <SidebarNav />
-      <main className="pt-14 lg:pt-0">
+      <main className="pt-14 lg:pt-0 lg:pl-64">
         <div className="px-4 py-6 lg:px-8 lg:py-8">
           <div className="h-6 w-48 animate-pulse rounded-lg bg-border/40 mb-3 lg:h-7 lg:w-56" />
           <div className="h-4 w-64 animate-pulse rounded-lg bg-border/40 lg:h-5 lg:w-80" />
