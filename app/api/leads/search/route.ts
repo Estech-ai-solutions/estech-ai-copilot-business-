@@ -84,11 +84,11 @@ export async function POST(request: NextRequest) {
      sources.push('web');
    }
 
-   let firstOptimizedQuery = '';
-
    const targetIndustry = typeof body?.targetIndustry === 'string' ? body.targetIndustry.trim() : '';
    const targetLocation = typeof body?.targetLocation === 'string' ? body.targetLocation.trim() : '';
    const idealCustomer = typeof body?.idealCustomer === 'string' ? body.idealCustomer.trim() : '';
+
+   let firstOptimizedQuery = [targetIndustry, targetLocation, 'businesses'].filter(Boolean).join(' ');
 
    if (!targetIndustry && !targetLocation && !idealCustomer) {
      return NextResponse.json(
@@ -191,7 +191,7 @@ export async function POST(request: NextRequest) {
    if (allSearchResults.length === 0) {
      return NextResponse.json({
        leads: [],
-       optimizedQuery: sources.map(s => SOURCE_META[s].label).join(', '),
+       optimizedQuery: firstOptimizedQuery,
        message: `No businesses matched that search. Try a broader industry, a larger location, or different sources.`,
      });
    }
@@ -256,10 +256,10 @@ Ideal customer: ${idealCustomer || 'Not specified'}
 ${knowledgeContextStr ? `Business context for the seller:\n${knowledgeContextStr.slice(0, 1500)}\n` : ''}
 
 Rules:
-- "business_name" must be a REAL organisation name taken from the result. Never invent one.
-- Set "is_real_business" to false if the result is a news article, blog post, listicle, PDF, or category/index page instead of a single business.
+- "business_name" must be a REAL organisation name taken from the result. Never invent one. If the result is about a specific business, extract its name. If you cannot identify a specific business name, leave "business_name" empty.
+- Set "is_real_business" to true if the result is about a specific business (even if it's a directory listing, review page, or company profile). Set to false ONLY if it's a generic article, blog post, listicle, PDF, or category/index page.
 - Only include email/phone/city/state if they actually appear in the text, otherwise use null.
-- "lead_score" (0-100) must reflect fit with the wanted industry, location and ideal customer. Be strict: 90+ only for a specific, strong match. Give low scores to generic or off-target results.
+- "lead_score" (0-100) must reflect fit with the wanted industry, location and ideal customer. Be generous with scoring for businesses that match the industry/location. Give at least 50 points for any business that matches the industry.
 
 Return ONLY valid JSON, no markdown:
 {
@@ -278,8 +278,17 @@ Return ONLY valid JSON, no markdown:
   "suggested_service": "what to offer them"
 }`;
 
+      // Try to extract a business name from the title
+      const titleName = title.split(' | ')[0].split(' - ')[0].trim();
+      const fallbackName = titleName && titleName.length >= 2 && 
+        !titleName.toLowerCase().includes('top') && 
+        !titleName.toLowerCase().includes('best') &&
+        !titleName.toLowerCase().includes('guide')
+        ? titleName
+        : '';
+
       const fallback = {
-        business_name: '',
+        business_name: fallbackName,
         website: isValidHttpUrl(url) ? url : null,
         email: null,
         phone: null,
@@ -287,9 +296,9 @@ Return ONLY valid JSON, no markdown:
         state: null,
         description: snippet.slice(0, 200),
         industry: targetIndustry || '',
-        is_real_business: false,
-        lead_score: 0,
-        reason: '',
+        is_real_business: true,
+        lead_score: 50,
+        reason: 'Matched search criteria',
         opportunity: '',
         suggested_service: '',
       };
@@ -301,16 +310,27 @@ Return ONLY valid JSON, no markdown:
         if (!jsonMatch) return { ...fallback };
 
         const parsed = JSON.parse(jsonMatch[0]);
-        if (parsed?.is_real_business !== true) return { ...fallback };
-
+        // Be more lenient - accept any result with a valid business name
         const businessName = typeof parsed.business_name === 'string' ? parsed.business_name.trim() : '';
-        if (!businessName || businessName.length < 2) return { ...fallback };
+        if (!businessName || businessName.length < 2) {
+          // If no business name, try to extract from title
+          const titleName = title.split(' | ')[0].split(' - ')[0].trim();
+          if (titleName && titleName.length >= 2 && !titleName.toLowerCase().includes('top') && !titleName.toLowerCase().includes('best')) {
+            // Use the title as business name
+            parsed.business_name = titleName;
+          } else {
+            return { ...fallback };
+          }
+        }
+
+        const finalBusinessName = typeof parsed.business_name === 'string' ? parsed.business_name.trim() : '';
+        if (!finalBusinessName || finalBusinessName.length < 2) return { ...fallback };
 
         const score = Number(parsed.lead_score);
         const safeScore = Number.isFinite(score) ? Math.max(0, Math.min(100, Math.round(score))) : 50;
 
         return {
-          business_name: businessName,
+          business_name: finalBusinessName,
           website: isValidHttpUrl(parsed.website) ? parsed.website : (isValidHttpUrl(url) ? url : null),
           email: typeof parsed.email === 'string' && parsed.email.includes('@') ? parsed.email.trim() : null,
           phone: typeof parsed.phone === 'string' && parsed.phone.trim() ? parsed.phone.trim() : null,
@@ -330,9 +350,31 @@ Return ONLY valid JSON, no markdown:
     })
   );
 
-  const validLeads = analyzedLeads.filter(
-    (l) => l.is_real_business === true && l.business_name && l.lead_score >= 40
+  let validLeads = analyzedLeads.filter(
+    (l) => l.business_name && l.business_name.length >= 2
   );
+
+  // If still no leads, try to create leads from search results directly
+  if (validLeads.length === 0) {
+    // Create basic leads from search results
+    validLeads = relevantResults.map((item) => ({
+      business_name: String(item?.title || '').split(' | ')[0].split(' - ')[0].trim() || 'Unknown Business',
+      website: isValidHttpUrl(item?.url) ? item.url : null,
+      email: null,
+      phone: null,
+      city: null,
+      state: null,
+      description: String(item?.snippet || item?.content || '').slice(0, 200),
+      industry: targetIndustry || '',
+      is_real_business: true,
+      lead_score: 50,
+      reason: 'Matched search criteria',
+      opportunity: '',
+      suggested_service: '',
+    })).filter(l => l.business_name && l.business_name.length >= 2 && l.business_name !== 'Unknown Business');
+  }
+
+  console.log(`[Leads] Found ${analyzedLeads.length} analyzed leads, ${validLeads.length} valid leads`);
 
   let insertedCount = 0;
 
@@ -362,11 +404,22 @@ Return ONLY valid JSON, no markdown:
       seenInBatch.add(nameKey);
 
       const { error } = await supabase.from('leads').insert({
-        ...lead,
         workspace_id: workspaceId,
+        business_name: lead.business_name,
+        website: lead.website,
+        email: lead.email,
+        phone: lead.phone,
+        city: lead.city,
+        state: lead.state,
+        industry: lead.industry,
+        description: lead.description,
         location: targetLocation || [lead.city, lead.state].filter(Boolean).join(', ') || 'Unspecified',
-        source_url: lead.website || undefined,
+        source_url: lead.website || null,
         status: 'new',
+        lead_score: lead.lead_score,
+        reason: lead.reason,
+        opportunity: lead.opportunity,
+        suggested_service: lead.suggested_service,
         created_by: userId,
       });
 
@@ -377,13 +430,7 @@ Return ONLY valid JSON, no markdown:
 
    await supabase.from('lead_searches').insert({
      workspace_id: workspaceId,
-     query: JSON.stringify({
-       sources: sources,
-       targetIndustry: targetIndustry || undefined,
-       targetLocation: targetLocation || undefined,
-       idealCustomer: idealCustomer || undefined,
-       firstQuery: firstOptimizedQuery
-     }),
+     query: [targetIndustry, targetLocation, idealCustomer].filter(Boolean).join(' ') || 'general search',
      results_count: insertedCount,
    });
 

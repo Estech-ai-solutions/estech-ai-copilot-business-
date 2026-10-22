@@ -108,7 +108,7 @@ export default function AnalyticsPage() {
       <div className="min-h-screen bg-background">
         <MobileNav />
         <SidebarNav />
-        <main className="lg:pl-64 pt-14 lg:pt-0">
+        <main className="pt-14 lg:pt-0">
           <div className="px-4 py-6 lg:px-8 lg:py-8">
             <div className="h-7 w-48 animate-pulse rounded-lg bg-border/40 mb-2" />
             <div className="h-4 w-72 animate-pulse rounded-lg bg-border/40 mb-6" />
@@ -131,7 +131,7 @@ export default function AnalyticsPage() {
     <div className="min-h-screen bg-background">
       <MobileNav />
       <SidebarNav />
-      <main className="lg:pl-64 pt-14 lg:pt-0">
+      <main className="pt-14 lg:pt-0">
         <div className="px-4 py-6 lg:px-8 lg:py-8">
           <PageHeader
             title="Analytics"
@@ -346,3 +346,4 @@ function getConicEnd(items: { type: string; count: number }[], index: number, to
   }
   return Math.round(degrees);
 }
+

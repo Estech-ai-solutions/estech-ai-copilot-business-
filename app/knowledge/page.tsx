@@ -244,7 +244,7 @@ export default function KnowledgePage() {
     <div className="min-h-screen bg-background">
       <MobileNav />
       <SidebarNav />
-      <main className="lg:pl-64 pt-14 lg:pt-0">
+      <main className="pt-14 lg:pt-0">
         <div className="px-4 py-6 lg:px-8 lg:py-8">
           <PageHeader
             title="Business Brain"
@@ -599,3 +599,4 @@ export default function KnowledgePage() {
     </div>
   );
 }
+

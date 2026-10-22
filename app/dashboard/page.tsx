@@ -6,9 +6,9 @@ import SidebarNav from '@/components/sidebar-nav';
 import { MobileNav } from '@/components/mobile-nav';
 import {
   Bot, Send, TrendingUp, Target, FileText, CheckSquare, Brain,
-  Loader2, ArrowUpRight, Sparkles, ChevronRight
+  Loader2, ArrowUpRight, Sparkles, ChevronRight, Users, Zap
 } from 'lucide-react';
-import { PageHeader, StatCard, Section, Badge, Button, Input, Alert } from '@/components/ui';
+import { PageHeader, StatCard, Section, Badge, Button, Input } from '@/components/ui';
 import { useSupabaseContext } from '@/providers/supabase-provider';
 import { supabase } from '@/lib/supabase';
 import { formatResponseText } from '@/lib/utils';
@@ -124,23 +124,19 @@ export default function DashboardPage() {
     const recs: Recommendation[] = [];
     const currentLeads = leadsData || leads;
 
-    // Check for leads without outreach
-    if (currentLeads.length > 0) {
-      const newLeads = currentLeads.filter(l => l.status === 'new').length;
-      if (newLeads > 0) {
-        recs.push({
-          id: 'leads_no_outreach',
-          type: 'leads_without_outreach',
-          title: `${newLeads} new lead${newLeads > 1 ? 's' : ''} waiting`,
-          description: 'These leads haven\'t received any outreach yet.',
-          action: 'Review leads',
-          href: '/leads',
-          count: newLeads,
-        });
-      }
+    const newLeads = currentLeads.filter(l => l.status === 'new').length;
+    if (newLeads > 0) {
+      recs.push({
+        id: 'leads_no_outreach',
+        type: 'leads_without_outreach',
+        title: `${newLeads} new lead${newLeads > 1 ? 's' : ''} waiting`,
+        description: 'These leads haven\'t received any outreach yet.',
+        action: 'Review leads',
+        href: '/leads',
+        count: newLeads,
+      });
     }
 
-    // Check for follow-up tasks
     const followUpTasks = tasksData.filter(t => 
       t.status !== 'done' && t.due_date && new Date(t.due_date) <= new Date()
     ).length;
@@ -156,7 +152,6 @@ export default function DashboardPage() {
       });
     }
 
-    // Check for empty knowledge base
     if (knowledge.length === 0) {
       recs.push({
         id: 'knowledge_gaps',
@@ -219,7 +214,7 @@ export default function DashboardPage() {
       <div className="min-h-screen bg-background">
         <MobileNav />
         <SidebarNav />
-        <main className="lg:pl-64 pt-14 lg:pt-0">
+        <main className="pt-14 lg:pt-0">
           <div className="px-4 py-6 lg:px-8 lg:py-8">
             <div className="h-6 w-48 animate-pulse rounded-lg bg-border/40 mb-3 lg:h-7 lg:w-56" />
             <div className="h-4 w-64 animate-pulse rounded-lg bg-border/40 lg:h-5 lg:w-80" />
@@ -233,285 +228,219 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-background">
       <MobileNav />
       <SidebarNav />
-      <main className="lg:pl-64 pt-14 lg:pt-0">
-        <div className="px-4 py-6 lg:px-8 lg:py-8">
+
+      <main className="pt-14 lg:pt-0">
+        <div className="px-4 py-6 lg:px-8 lg:py-8 max-w-7xl mx-auto">
           <PageHeader
-            title={`Welcome back${businessName ? ` to ${businessName}` : ''}`}
+            title={`Welcome back${businessName ? `, ${businessName}` : ''}`}
             description="Your AI-powered business assistant"
           />
 
-           {/* AI Interaction Area */}
-           <div className="mb-8">
-             <div className="rounded-2xl border border-border/40 bg-surface/90 backdrop-blur-lg p-6 lg:p-8 shadow-sm">
-               <div className="flex items-center gap-4 mb-6">
-                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/20">
-                   <Bot className="h-6 w-6 text-primary" />
-                 </div>
-                 <div>
-                   <h3 className="text-lg font-semibold text-text-heading mb-1">Ask Estech</h3>
-                   <p className="text-sm text-text-muted">Get instant insights about your business, leads, or next steps</p>
-                 </div>
-               </div>
+          {/* AI Interaction Area */}
+          <div className="mb-6 lg:mb-8">
+            <div className="rounded-2xl border border-border/40 bg-surface/80 p-5 lg:p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15">
+                  <Bot className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-base font-medium text-text-heading">Ask Estech</h3>
+                  <p className="text-xs text-text-muted">Get insights about your business, leads, or next steps</p>
+                </div>
+              </div>
 
-               <form onSubmit={handleAiSubmit} className="space-y-4">
-                 <div className="relative">
-                   <Input
-                     value={aiInput}
-                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAiInput(e.target.value)}
-                     placeholder="Ask Estech about your business, leads, or marketing..."
-                     className="pr-12 min-h-[52px] text-base font-medium"
-                     disabled={aiLoading}
-                   />
-                   <button
-                     type="submit"
-                     disabled={!aiInput.trim() || aiLoading}
-                     className="absolute right-3 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-white hover:bg-primary/90 disabled:opacity-50 transition-all shadow-hover-lg"
-                     aria-label="Send message"
-                   >
-                     {aiLoading ? (
-                       <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                     ) : (
-                       <Send className="h-4 w-4" />
-                     )}
-                   </button>
-                 </div>
-               </form>
+              <form onSubmit={handleAiSubmit} className="space-y-3">
+                <div className="relative">
+                  <Input
+                    value={aiInput}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAiInput(e.target.value)}
+                    placeholder="Ask Estech about your business..."
+                    className="pr-12 min-h-[44px] text-sm"
+                    disabled={aiLoading}
+                  />
+                  <button
+                    type="submit"
+                    disabled={!aiInput.trim() || aiLoading}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white hover:bg-primary/90 disabled:opacity-50 transition-all"
+                    aria-label="Send message"
+                  >
+                    {aiLoading ? (
+                      <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              </form>
 
-               {aiSuggestion && (
-                 <div className="mt-6 rounded-xl border border-border/40 bg-background-secondary/50 p-6">
-                   <div
-                     className="text-base text-text-heading leading-7 mb-4"
-                     dangerouslySetInnerHTML={{ __html: formatResponseText(aiSuggestion.message) }}
-                   />
-                   {aiSuggestion.action && (
-                     <Button
-                       onClick={handleAiAction}
-                       variant="primary"
-                       size="sm"
-                       className="flex items-center gap-2 px-4 py-3"
-                     >
-                       {aiSuggestion.action.label}
-                       <ArrowUpRight className="h-4 w-4" />
-                     </Button>
-                   )}
-                 </div>
-               )}
+              {aiSuggestion && (
+                <div className="mt-4 rounded-xl border border-border/40 bg-background-secondary/40 p-4">
+                  <div
+                    className="text-sm text-text-heading leading-6 mb-3"
+                    dangerouslySetInnerHTML={{ __html: formatResponseText(aiSuggestion.message) }}
+                  />
+                  {aiSuggestion.action && (
+                    <Button
+                      onClick={handleAiAction}
+                      variant="primary"
+                      size="sm"
+                      className="flex items-center gap-2"
+                    >
+                      {aiSuggestion.action.label}
+                      <ArrowUpRight className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
-           {/* Recommendations */}
-           {recommendations.length > 0 && (
-             <div className="mb-8">
-               <h3 className="text-lg font-semibold text-text-heading mb-6">
-                 Estech recommends
-               </h3>
-               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                 {recommendations.map(rec => (
-                   <button
-                     key={rec.id}
-                     onClick={() => router.push(rec.href)}
-                     className="group rounded-2xl border border-border/40 bg-background-secondary/50 p-6 transition-all hover:border-primary/30 hover:bg-surface/50 hover:shadow-md"
-                   >
-                     <div className="flex items-start justify-between mb-3">
-                       <div className="flex items-center gap-3">
-                         <div className="h-8 w-8 flex items-center justify-center rounded-lg bg-primary/10">
-                           {rec.type === 'leads_without_outreach' && <Target className="h-5 w-5 text-primary" />}
-                           {rec.type === 'follow_ups_due' && <CheckSquare className="h-5 w-5 text-primary" />}
-                           {rec.type === 'new_documents' && <FileText className="h-5 w-5 text-primary" />}
-                           {rec.type === 'knowledge_gaps' && <Brain className="h-5 w-5 text-primary" />}
-                         </div>
-                         <div>
-                           <h4 className="text-base font-semibold text-text-heading">{rec.title}</h4>
-                           {rec.count !== undefined && (
-                             <Badge variant="primary" className="text-xs ml-2">{rec.count}</Badge>
-                           )}
-                         </div>
-                       </div>
-                       <span className="opacity-50 transition-opacity group-hover:opacity-100">
-                         <ChevronRight className="h-4 w-4" />
-                       </span>
-                     </div>
-                     <p className="mt-3 text-sm text-text-muted line-clamp-2">{rec.description}</p>
-                     <div className="mt-4 flex items-center gap-2 text-sm font-medium text-primary">
-                       {rec.action}
-                     </div>
-                   </button>
-                 ))}
-               </div>
-             </div>
-           )}
+          {/* Recommendations */}
+          {recommendations.length > 0 && (
+            <div className="mb-6 lg:mb-8">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-primary mb-3">
+                Estech recommends
+              </h3>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {recommendations.map(rec => (
+                  <button
+                    key={rec.id}
+                    onClick={() => router.push(rec.href)}
+                    className="rounded-xl border border-border/40 bg-background-secondary/40 p-4 text-left transition hover:bg-surface/60 hover:border-primary/30"
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <h4 className="text-sm font-medium text-text-heading">{rec.title}</h4>
+                      {rec.count !== undefined && (
+                        <Badge variant="primary" className="text-xs">{rec.count}</Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-text-muted mb-3">{rec.description}</p>
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
+                      {rec.action}
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
-           {/* Business Snapshot */}
-           <div className="grid gap-6 lg:gap-8 grid-cols-1 lg:grid-cols-3">
-             <div className="lg:col-span-2">
-               <Section title="Business Overview" className="mb-6">
-                 <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                   <StatCard icon={Target} value={leads.length} label="Total Leads" />
-                   <StatCard icon={Target} value={hotLeads} label="Hot Leads" />
-                   <StatCard icon={CheckSquare} value={completedTasks} label="Tasks Done" />
-                   <StatCard icon={FileText} value={documents.length} label="Documents" />
-                 </div>
-               </Section>
+          {/* Business Snapshot */}
+          <div className="grid gap-4 lg:gap-6 grid-cols-1 lg:grid-cols-3">
+            <div className="lg:col-span-2 space-y-4 lg:space-y-6">
+              <Section title="Business Overview">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <StatCard icon={Target} value={leads.length} label="Total Leads" />
+                  <StatCard icon={Target} value={hotLeads} label="Hot Leads" />
+                  <StatCard icon={CheckSquare} value={completedTasks} label="Tasks Done" />
+                  <StatCard icon={FileText} value={documents.length} label="Documents" />
+                </div>
+              </Section>
 
-               <Section title="Recent Activity" className="mb-6">
-                 {documents.length === 0 && tasks.length === 0 && leads.length === 0 ? (
-                   <div className="text-center py-8">
-                     <p className="text-sm text-text-muted mb-4">No activity yet</p>
-                     <Button
-                       onClick={() => setAiInput('I need to find potential customers')}
-                       variant="primary"
-                       size="sm"
-                       className="px-5 py-3"
-                     >
-                       Ask Estech for help
-                     </Button>
-                   </div>
-                 ) : (
-                   <div className="divide-y divide-border/50">
-                     {documents.slice(0, 3).map(doc => (
-                       <div key={doc.id} className="flex items-center justify-between py-4">
-                         <div className="flex items-center gap-3">
-                           <FileText className="h-4 w-4 text-primary" />
-                           <div className="flex-1">
-                             <p className="text-base font-medium text-text-heading truncate">{doc.title}</p>
-                             <span className="text-xs text-text-muted capitalize">{doc.type}</span>
-                           </div>
-                         </div>
-                         <div className="text-xs text-text-muted">
-                           {/* Format date - simplified for now */}
-                           <span className="whitespace-nowrap">Today</span>
-                         </div>
-                       </div>
-                     ))}
-                     {tasks.slice(0, 3).map(task => (
-                       <div key={task.id} className="flex items-center justify-between py-4">
-                         <div className="flex items-center gap-3">
-                           <CheckSquare className="h-4 w-4 text-primary" />
-                           <div className="flex-1">
-                             <p className="text-base font-medium text-text-heading truncate">{task.title}</p>
-                             <span className="text-xs text-text-muted capitalize">{task.status}</span>
-                           </div>
-                         </div>
-                         <div className="text-xs text-text-muted">
-                           {/* Format date - simplified for now */}
-                           <span className="whitespace-nowrap">Today</span>
-                         </div>
-                       </div>
-                     ))}
-                     {leads.slice(0, 3).map(lead => (
-                       <div key={lead.id} className="flex items-center justify-between py-4">
-                         <div className="flex items-center gap-3">
-                           <Target className="h-4 w-4 text-primary" />
-                           <div className="flex-1">
-                             <p className="text-base font-medium text-text-heading truncate">{lead.business_name}</p>
-                             <span className="text-xs text-text-muted">Score: {lead.lead_score}</span>
-                           </div>
-                         </div>
-                         <div className="text-xs text-text-muted">
-                           {/* Format date - simplified for now */}
-                           <span className="whitespace-nowrap">Today</span>
-                         </div>
-                       </div>
-                     ))}
-                   </div>
-                 )}
-               </Section>
+              <Section title="Recent Activity">
+                {documents.length === 0 && tasks.length === 0 && leads.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-sm text-text-muted mb-4">No activity yet</p>
+                    <Button
+                      onClick={() => setAiInput('I need to find potential customers')}
+                      variant="primary"
+                      size="sm"
+                    >
+                      Ask Estech for help
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {documents.slice(0, 3).map(doc => (
+                      <div key={doc.id} className="flex items-center justify-between text-sm py-2">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-3.5 w-3.5 text-primary" />
+                          <span className="truncate text-text-heading">{doc.title}</span>
+                        </div>
+                        <span className="text-xs text-text-muted capitalize">{doc.type}</span>
+                      </div>
+                    ))}
+                    {tasks.slice(0, 3).map(task => (
+                      <div key={task.id} className="flex items-center justify-between text-sm py-2">
+                        <div className="flex items-center gap-2">
+                          <CheckSquare className="h-3.5 w-3.5 text-primary" />
+                          <span className="truncate text-text-heading">{task.title}</span>
+                        </div>
+                        <span className="text-xs text-text-muted capitalize">{task.status}</span>
+                      </div>
+                    ))}
+                    {leads.slice(0, 3).map(lead => (
+                      <div key={lead.id} className="flex items-center justify-between text-sm py-2">
+                        <div className="flex items-center gap-2">
+                          <Target className="h-3.5 w-3.5 text-primary" />
+                          <span className="truncate text-text-heading">{lead.business_name}</span>
+                        </div>
+                        <span className="text-xs text-text-muted">Score: {lead.lead_score}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Section>
             </div>
 
-             <div className="space-y-6 lg:space-y-8">
-               <Section title="Quick Actions" className="mb-6">
-                 <div className="space-y-3">
-                   <button
-                     onClick={() => {
-                       setAiInput('I need to find potential customers');
-                     }}
-                     className="w-full flex items-center justify-between rounded-2xl border border-border/40 bg-background-secondary/50 px-6 py-4 text-base font-semibold text-text-heading transition-all hover:border-primary/30 hover:bg-surface/50 hover:shadow-md"
-                   >
-                     <div className="flex items-center gap-4">
-                       <div className="h-9 w-9 flex items-center justify-center rounded-lg bg-primary/10">
-                         <Target className="h-5 w-5 text-primary" />
-                       </div>
-                       <div className="flex-1">
-                         <span>Find leads</span>
-                       </div>
-                     </div>
-                     <div className="h-8 w-8 flex items-center justify-center rounded-lg bg-primary/10">
-                       <ArrowUpRight className="h-4 w-4 text-text-muted" />
-                     </div>
-                   </button>
-                   <button
-                     onClick={() => {
-                       setAiInput('I need to reply to a customer');
-                     }}
-                     className="w-full flex items-center justify-between rounded-2xl border border-border/40 bg-background-secondary/50 px-6 py-4 text-base font-semibold text-text-heading transition-all hover:border-primary/30 hover:bg-surface/50 hover:shadow-md"
-                   >
-                     <div className="flex items-center gap-4">
-                       <div className="h-9 w-9 flex items-center justify-center rounded-lg bg-primary/10">
-                         <Sparkles className="h-5 w-5 text-primary" />
-                       </div>
-                       <div className="flex-1">
-                         <span>Reply to customer</span>
-                       </div>
-                     </div>
-                     <div className="h-8 w-8 flex items-center justify-center rounded-lg bg-primary/10">
-                       <ArrowUpRight className="h-4 w-4 text-text-muted" />
-                     </div>
-                   </button>
-                   <button
-                     onClick={() => {
-                       setAiInput('Create a quotation or proposal');
-                     }}
-                     className="w-full flex items-center justify-between rounded-2xl border border-border/40 bg-background-secondary/50 px-6 py-4 text-base font-semibold text-text-heading transition-all hover:border-primary/30 hover:bg-surface/50 hover:shadow-md"
-                   >
-                     <div className="flex items-center gap-4">
-                       <div className="h-9 w-9 flex items-center justify-center rounded-lg bg-primary/10">
-                         <FileText className="h-5 w-5 text-primary" />
-                       </div>
-                       <div className="flex-1">
-                         <span>Create document</span>
-                       </div>
-                     </div>
-                     <div className="h-8 w-8 flex items-center justify-center rounded-lg bg-primary/10">
-                       <ArrowUpRight className="h-4 w-4 text-text-muted" />
-                     </div>
-                   </button>
-                   <button
-                     onClick={() => {
-                       setAiInput('Add a task or reminder');
-                     }}
-                     className="w-full flex items-center justify-between rounded-2xl border border-border/40 bg-background-secondary/50 px-6 py-4 text-base font-semibold text-text-heading transition-all hover:border-primary/30 hover:bg-surface/50 hover:shadow-md"
-                   >
-                     <div className="flex items-center gap-4">
-                       <div className="h-9 w-9 flex items-center justify-center rounded-lg bg-primary/10">
-                         <CheckSquare className="h-5 w-5 text-primary" />
-                       </div>
-                       <div className="flex-1">
-                         <span>Add task</span>
-                       </div>
-                     </div>
-                     <div className="h-8 w-8 flex items-center justify-center rounded-lg bg-primary/10">
-                       <ArrowUpRight className="h-4 w-4 text-text-muted" />
-                     </div>
-                   </button>
-                 </div>
-               </Section>
+            <div className="space-y-4 lg:space-y-6">
+              <Section title="Quick Actions">
+                <div className="space-y-2">
+                  <button
+                    onClick={() => setAiInput('I need to find potential customers')}
+                    className="w-full flex items-center justify-between rounded-xl border border-border/40 bg-background-secondary/40 px-4 py-3 text-sm text-text-heading transition hover:bg-surface/60"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Target className="h-4 w-4 text-primary" />
+                      <span>Find leads</span>
+                    </div>
+                    <ArrowUpRight className="h-3.5 w-3.5 text-text-muted" />
+                  </button>
+                  <button
+                    onClick={() => setAiInput('I need to reply to a customer')}
+                    className="w-full flex items-center justify-between rounded-xl border border-border/40 bg-background-secondary/40 px-4 py-3 text-sm text-text-heading transition hover:bg-surface/60"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Sparkles className="h-4 w-4 text-primary" />
+                      <span>Reply to customer</span>
+                    </div>
+                    <ArrowUpRight className="h-3.5 w-3.5 text-text-muted" />
+                  </button>
+                  <button
+                    onClick={() => setAiInput('Create a quotation or proposal')}
+                    className="w-full flex items-center justify-between rounded-xl border border-border/40 bg-background-secondary/40 px-4 py-3 text-sm text-text-heading transition hover:bg-surface/60"
+                  >
+                    <div className="flex items-center gap-3">
+                      <FileText className="h-4 w-4 text-primary" />
+                      <span>Create document</span>
+                    </div>
+                    <ArrowUpRight className="h-3.5 w-3.5 text-text-muted" />
+                  </button>
+                  <button
+                    onClick={() => setAiInput('Add a task or reminder')}
+                    className="w-full flex items-center justify-between rounded-xl border border-border/40 bg-background-secondary/40 px-4 py-3 text-sm text-text-heading transition hover:bg-surface/60"
+                  >
+                    <div className="flex items-center gap-3">
+                      <CheckSquare className="h-4 w-4 text-primary" />
+                      <span>Add task</span>
+                    </div>
+                    <ArrowUpRight className="h-3.5 w-3.5 text-text-muted" />
+                  </button>
+                </div>
+              </Section>
 
-               {knowledge.length > 0 && (
-                 <Section title="Business Brain" className="mb-6">
-                   <div className="space-y-3">
-                     {knowledge.slice(0, 3).map(entry => (
-                       <div key={entry.id} className="flex items-center gap-4 p-4 rounded-xl border border-border/40 bg-background-secondary/50">
-                         <div className="h-10 w-10 flex items-center justify-center rounded-lg bg-primary/10">
-                           <Brain className="h-5 w-5 text-primary" />
-                         </div>
-                         <div className="flex-1">
-                           <p className="text-base font-medium text-text-heading truncate">{entry.title}</p>
-                         </div>
-                       </div>
-                     ))}
-                   </div>
-                 </Section>
-               )}
+              {knowledge.length > 0 && (
+                <Section title="Business Brain">
+                  <div className="space-y-2">
+                    {knowledge.slice(0, 3).map(entry => (
+                      <div key={entry.id} className="flex items-center gap-2 text-sm">
+                        <Brain className="h-3.5 w-3.5 text-primary" />
+                        <span className="truncate text-text-heading">{entry.title}</span>
+                      </div>
+                    ))}
+                  </div>
+                </Section>
+              )}
             </div>
           </div>
         </div>

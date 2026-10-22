@@ -143,8 +143,6 @@ export default function SidebarNav() {
           </div>
         )}
       </aside>
-
-      <div className={`hidden lg:block ${collapsed ? 'w-20' : 'w-64'}`} />
     </>
   );
 }

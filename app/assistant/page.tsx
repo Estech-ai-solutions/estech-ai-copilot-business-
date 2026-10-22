@@ -272,7 +272,7 @@ export default function AssistantPage() {
       <MobileNav />
       <SidebarNav />
 
-      <div className="flex flex-1 lg:pl-64 pt-14 lg:pt-0">
+      <div className="flex flex-1 pt-14 lg:pt-0">
         {sidebarOpen && (
           <div
             className="fixed inset-0 z-30 bg-black/50 backdrop-blur-sm lg:hidden"
@@ -649,3 +649,4 @@ function QuickPrompt({ children, onClick }: { children: React.ReactNode; onClick
     </button>
   );
 }
+

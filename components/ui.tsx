@@ -77,7 +77,7 @@ export function Card({
 }) {
   return (
     <div className={cn(
-      'bg-surface/70 backdrop:blur-xl border border-border/30 rounded-2xl',
+      'bg-surface/70 backdrop-blur-xl border border-border/30 rounded-2xl',
       elevated ? 'shadow-[0_4px_20px_rgba(0,0,0,0.15)]' : 'shadow-sm',
       hover && 'transition-all duration-300 hover:bg-surface/90 hover:border-border/50 hover:shadow-lg',
       className
