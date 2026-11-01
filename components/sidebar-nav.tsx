@@ -8,18 +8,18 @@ import { useSupabaseContext } from '@/providers/supabase-provider';
 
 const navigationSections = [
   {
-    title: 'Home',
+    title: 'Overview',
     items: [
-      { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+      { href: '/dashboard', icon: LayoutDashboard, label: 'Overview' },
     ]
   },
   {
-    title: 'Customers & Sales',
+    title: 'Work',
     items: [
       { href: '/leads', icon: Target, label: 'Leads' },
-      { href: '/responses', icon: MessageSquare, label: 'Messages' },
+      { href: '/responses', icon: MessageSquare, label: 'Communications' },
       { href: '/documents', icon: FileText, label: 'Documents' },
-      { href: '/tasks', icon: CheckSquareIcon, label: 'Tasks' },
+      { href: '/tasks', icon: CheckSquareIcon, label: 'Follow-ups' },
     ]
   },
   {
@@ -29,17 +29,9 @@ const navigationSections = [
     ]
   },
   {
-    title: 'Insights',
+    title: 'Account',
     items: [
-      { href: '/analytics', icon: BarChart3, label: 'Analytics' },
-    ]
-  },
-  {
-    title: 'More',
-    items: [
-      { href: '/assistant', icon: Bot, label: 'AI Copilot' },
       { href: '/settings', icon: Settings, label: 'Settings' },
-      { href: '/profile', icon: User, label: 'Profile' },
     ]
   },
 ];

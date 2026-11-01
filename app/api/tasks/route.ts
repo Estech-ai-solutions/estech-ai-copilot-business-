@@ -59,6 +59,7 @@ export async function POST(request: NextRequest) {
       priority: priority || 'medium',
       due_date,
       status: 'pending',
+      created_by: userId,
     })
     .select()
     .single();

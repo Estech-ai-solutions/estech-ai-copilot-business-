@@ -288,11 +288,11 @@ export default function HomePage() {
             </span>
 
              <h1 className="mx-auto mt-6 max-w-4xl text-4xl font-semibold tracking-tight text-text-heading sm:text-5xl lg:text-6xl">
-               Stop guessing. Start growing.
+               Your business knowledge, turned into client-ready work.
              </h1>
 
             <p className="mx-auto mt-5 max-w-2xl text-base text-text-muted sm:text-lg leading-relaxed">
-              An AI assistant that learns your customers, documents, and knowledge—so you can spend less time on repetitive work and more time growing the business.
+              Teach Estech how your business works. Create informed customer replies, professional proposals and follow-ups using the knowledge it already has about your company.
             </p>
 
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -300,13 +300,13 @@ export default function HomePage() {
                 href="/register"
                 className="rounded-full bg-primary px-6 py-3 text-sm font-medium text-white hover:bg-primary-dark transition shadow-[0_16px_40px_rgba(59,130,246,0.25)]"
               >
-                Get Started Free
+                Build Your Business Brain
               </Link>
               <Link
                 href="#features"
                 className="rounded-full border border-border bg-surface/60 px-6 py-3 text-sm font-medium text-text-heading hover:bg-surface-hover transition"
               >
-                See Features
+                See How It Works
               </Link>
             </div>
 

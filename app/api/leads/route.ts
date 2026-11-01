@@ -69,6 +69,7 @@ export async function POST(request: NextRequest) {
       source_url,
       status: status || 'new',
       lead_score: lead_score || 60,
+      created_by: userId,
     })
     .select()
     .single();

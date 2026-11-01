@@ -12,7 +12,7 @@ export default function OfflinePage() {
         </div>
         <h1 className="text-2xl font-semibold text-text-heading mb-3">Offline</h1>
         <p className="text-base text-text-muted mb-6 leading-7">
-          You're offline. Connect to the internet to access live data. Cached pages are available for browsing.
+          You&apos;re offline. Connect to the internet to access live data. Cached pages are available for browsing.
         </p>
         <div className="flex gap-3 justify-center">
           <Link 

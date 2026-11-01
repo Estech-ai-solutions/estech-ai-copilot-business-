@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
 
   const { supabase, userId, workspaceId } = result;
   const body = await request.json();
-  const { conversationId, message } = body || {};
+  const { conversationId, message, pageContext } = body || {};
 
   if (!conversationId || !message) {
     return NextResponse.json({ error: 'conversationId and message are required' }, { status: 400 });
@@ -59,6 +59,10 @@ export async function POST(request: NextRequest) {
   const knowledgeContextStr = buildKnowledgeContext(knowledgeResults);
 
   let systemPrompt = 'You are Estech AI Business Copilot.\n\n';
+  if (pageContext) {
+    systemPrompt += `The user is currently on: ${pageContext}.\n`;
+    systemPrompt += 'Use this to tailor your answer to their current screen.\n\n';
+  }
   systemPrompt += 'Below is trusted business knowledge from the user\'s Business Brain.\n';
   systemPrompt += 'Use this knowledge when answering.\n\n';
   systemPrompt += 'If the information exists in the Business Brain, answer from it naturally.\n';

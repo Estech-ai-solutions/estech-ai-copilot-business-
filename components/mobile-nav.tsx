@@ -10,17 +10,13 @@ import {
 } from 'lucide-react';
 
 const navigationItems = [
-  { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { href: '/dashboard', icon: LayoutDashboard, label: 'Overview' },
   { href: '/leads', icon: Target, label: 'Leads' },
-  { href: '/responses', icon: MessageSquare, label: 'Messages' },
+  { href: '/responses', icon: MessageSquare, label: 'Communications' },
   { href: '/documents', icon: FileText, label: 'Documents' },
   { href: '/knowledge', icon: Brain, label: 'Business Brain' },
-  { href: '/tasks', icon: CheckSquare, label: 'Tasks' },
-  { href: '/content', icon: Megaphone, label: 'Content Studio' },
-  { href: '/analytics', icon: BarChart3, label: 'Analytics' },
-  { href: '/assistant', icon: Bot, label: 'AI Copilot' },
+  { href: '/tasks', icon: CheckSquare, label: 'Follow-ups' },
   { href: '/settings', icon: Settings, label: 'Settings' },
-  { href: '/profile', icon: User, label: 'Profile' },
 ];
 
 export function MobileNav() {

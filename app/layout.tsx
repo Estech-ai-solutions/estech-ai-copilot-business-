@@ -4,6 +4,7 @@ import '../styles/globals.css';
 import { InstallPrompt } from '@/components/install-prompt';
 import { SupabaseProvider } from '@/providers/supabase-provider';
 import { ToastProvider } from '@/components/toast';
+import AskEstech from '@/components/ask-estech';
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -15,8 +16,8 @@ export const viewport: Viewport = {
 } as Viewport;
 
 export const metadata: Metadata = {
-  title: 'Estech AI Business Copilot | AI Assistant for Small Businesses',
-  description: 'AI-assisted workspace for small businesses. Manage leads, communications, documents, knowledge, and content with an AI that learns your business.',
+  title: 'Estech Business Copilot | Your business knowledge, turned into client-ready work',
+  description: 'Teach Estech how your business works. Create informed customer replies, professional proposals and follow-ups using the knowledge it already has about your company.',
   applicationName: 'Estech AI',
   appleWebApp: {
     capable: true,
@@ -31,7 +32,7 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   openGraph: {
     title: 'Estech AI Business Copilot',
-    description: 'AI-assisted workspace for small businesses. Manage leads, communications, documents, knowledge, and content with an AI that learns your business.',
+    description: 'Teach Estech how your business works. Create informed customer replies, professional proposals and follow-ups using the knowledge it already has about your company.',
     url: 'https://estech-ai.com',
     siteName: 'Estech AI',
     type: 'website',
@@ -39,7 +40,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'Estech AI Business Copilot',
-    description: 'AI-assisted workspace for small businesses. Manage leads, communications, documents, knowledge, and content with an AI that learns your business.',
+    description: 'Teach Estech how your business works. Create informed customer replies, professional proposals and follow-ups using the knowledge it already has about your company.',
   },
 } as Metadata;
 
@@ -50,6 +51,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <SupabaseProvider>
           <ToastProvider>
             {children}
+            <AskEstech />
           </ToastProvider>
         </SupabaseProvider>
         <InstallPrompt />
