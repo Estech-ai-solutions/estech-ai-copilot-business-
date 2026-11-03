@@ -1,45 +1,28 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { Bot, Mail, Lock, ArrowLeft, AlertCircle, Loader2 } from 'lucide-react';
-
-function classifyAuthError(message: string): string {
-  const normalized = message.toLowerCase();
-
-  if (normalized.includes('not confirmed') || normalized.includes('email not confirmed') || normalized.includes('email_not_confirmed')) {
-    return 'Please verify your email before signing in. Check your inbox for the verification link.';
-  }
-
-  if (normalized.includes('too many requests') || normalized.includes('too_many_requests') || normalized.includes('rate limit')) {
-    return 'Too many sign-in attempts. Please wait a few minutes and try again.';
-  }
-
-  if (normalized.includes('invalid login credentials') || normalized.includes('invalid_credentials')) {
-    return 'Invalid email or password. Please check your credentials and try again.';
-  }
-
-  if (normalized.includes('user not found') || normalized.includes('user_not_found')) {
-    return 'No account found with this email. Please sign up first.';
-  }
-
-  if (normalized.includes('password should be at least') || normalized.includes('weak_password')) {
-    return 'Password does not meet requirements. Please use a stronger password.';
-  }
-
-  return message;
-}
+import {
+  Bot, Mail, Lock, ArrowLeft, AlertCircle, Loader2,
+} from 'lucide-react';
+import { Turnstile } from '@/components/auth/turnstile';
+import { GoogleOAuthButton } from '@/components/auth/google-oauth-button';
+import { getSiteUrl, isCaptchaConfigured } from '@/lib/auth-helpers';
+import { classifyAuthError } from '@/lib/auth-validation';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendMessage, setResendMessage] = useState<string | null>(null);
+  const turnstileRef = useRef<any>(null);
   const router = useRouter();
+  const captchaConfigured = isCaptchaConfigured();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,15 +34,19 @@ export default function LoginPage() {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
+        options: {
+          captchaToken: captchaConfigured ? captchaToken ?? undefined : undefined,
+        },
       });
 
       if (error) {
         setError(classifyAuthError(error.message));
-      } else       if (data.user) {
-        // Check onboarding status
+        turnstileRef.current?.reset();
+        setCaptchaToken(null);
+      } else if (data.user) {
         const onboardingRes = await fetch('/api/onboarding/status');
         const onboardingJson = await onboardingRes.json();
-        
+
         if (!onboardingJson.completed) {
           router.push('/onboarding');
         } else {
@@ -69,6 +56,8 @@ export default function LoginPage() {
       }
     } catch (err: any) {
       setError(err.message || 'Login failed');
+      turnstileRef.current?.reset();
+      setCaptchaToken(null);
     } finally {
       setLoading(false);
     }
@@ -85,9 +74,14 @@ export default function LoginPage() {
       const { error } = await supabase.auth.resend({
         type: 'signup',
         email,
+        options: {
+          captchaToken: captchaConfigured ? captchaToken ?? undefined : undefined,
+        },
       });
       if (error) {
         setError(error.message);
+        turnstileRef.current?.reset();
+        setCaptchaToken(null);
       } else {
         setResendMessage('Verification email sent! Check your inbox.');
       }
@@ -144,9 +138,21 @@ export default function LoginPage() {
             </div>
           </div>
 
+          {captchaConfigured && (
+            <div className="flex justify-center">
+              <Turnstile
+                ref={turnstileRef}
+                siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? ''}
+                onVerify={setCaptchaToken}
+                onError={setError}
+                action="login"
+              />
+            </div>
+          )}
+
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || (captchaConfigured && !captchaToken)}
             className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-medium text-white hover:bg-primary/90 transition disabled:opacity-50 flex items-center justify-center gap-2 min-h-[44px]"
           >
             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -154,7 +160,14 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="space-y-3 text-center">
+        <div className="border-t border-border/40 pt-4 space-y-3 text-center">
+          <div className="relative flex items-center justify-center">
+            <div className="flex-1 border-t border-border/40" />
+            <span className="mx-2 text-xs text-text-muted">Or continue with</span>
+            <div className="flex-1 border-t border-border/40" />
+          </div>
+          <GoogleOAuthButton className="w-auto mx-auto" />
+
           {error && (
             <div className="flex items-center gap-2 rounded-xl bg-danger/10 border border-danger/20 px-4 py-3">
               <AlertCircle className="h-4 w-4 text-danger" />
@@ -171,7 +184,7 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={handleResendConfirmation}
-            disabled={resendLoading}
+            disabled={resendLoading || (captchaConfigured && !captchaToken)}
             className="text-sm text-primary hover:underline"
           >
             {resendLoading ? 'Sending...' : 'Resend verification email'}

@@ -1,19 +1,27 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { Bot, Mail, Lock, User, ArrowLeft, AlertCircle, Loader2, Building2 } from 'lucide-react';
+import {
+  Bot, Mail, Lock, User, ArrowLeft, AlertCircle, Loader2,
+} from 'lucide-react';
+import { Turnstile } from '@/components/auth/turnstile';
+import { GoogleOAuthButton } from '@/components/auth/google-oauth-button';
+import { isCaptchaConfigured } from '@/lib/auth-helpers';
 
 export default function RegisterPage() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const turnstileRef = useRef<any>(null);
   const router = useRouter();
+  const captchaConfigured = isCaptchaConfigured();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,17 +35,22 @@ export default function RegisterPage() {
         password,
         options: {
           data: { full_name: fullName },
+          captchaToken: captchaConfigured ? captchaToken ?? undefined : undefined,
         },
       });
 
       if (error) {
         setError(error.message);
-      } else       if (data.user) {
+        turnstileRef.current?.reset();
+        setCaptchaToken(null);
+      } else if (data.user) {
         setMessage('Account created! Redirecting to setup...');
         setTimeout(() => router.push('/onboarding'), 1500);
       }
     } catch (err: any) {
       setError(err.message || 'Registration failed');
+      turnstileRef.current?.reset();
+      setCaptchaToken(null);
     } finally {
       setLoading(false);
     }
@@ -119,9 +132,21 @@ export default function RegisterPage() {
             </div>
           </div>
 
+          {captchaConfigured && (
+            <div className="flex justify-center">
+              <Turnstile
+                ref={turnstileRef}
+                siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? ''}
+                onVerify={setCaptchaToken}
+                onError={setError}
+                action="signup"
+              />
+            </div>
+          )}
+
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || (captchaConfigured && !captchaToken)}
             className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-medium text-white hover:bg-primary/90 transition disabled:opacity-50 flex items-center justify-center gap-2 min-h-[44px]"
           >
             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -129,12 +154,21 @@ export default function RegisterPage() {
           </button>
         </form>
 
-        <p className="text-sm text-text-muted text-center">
-          Already have an account?{' '}
-          <Link href="/login" className="text-primary hover:underline">
-            Sign in
-          </Link>
-        </p>
+        <div className="border-t border-border/40 pt-4 space-y-3 text-center">
+          <div className="relative flex items-center justify-center">
+            <div className="flex-1 border-t border-border/40" />
+            <span className="mx-2 text-xs text-text-muted">Or continue with</span>
+            <div className="flex-1 border-t border-border/40" />
+          </div>
+          <GoogleOAuthButton className="w-auto mx-auto" />
+
+          <p className="text-sm text-text-muted text-center">
+            Already have an account?{' '}
+            <Link href="/login" className="text-primary hover:underline">
+              Sign in
+            </Link>
+          </p>
+        </div>
 
         <Link href="/" className="flex items-center justify-center gap-2 text-sm text-text-muted hover:text-text-heading transition">
           <ArrowLeft className="h-4 w-4" />

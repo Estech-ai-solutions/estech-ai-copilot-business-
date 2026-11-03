@@ -1,15 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { Bot, Mail, ArrowLeft, CheckCircle, Loader2 } from 'lucide-react';
+import { Turnstile } from '@/components/auth/turnstile';
+import { getSiteUrl, isCaptchaConfigured } from '@/lib/auth-helpers';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const turnstileRef = useRef<any>(null);
+  const captchaConfigured = isCaptchaConfigured();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,16 +24,21 @@ export default function ForgotPasswordPage() {
 
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/reset-password`,
+        redirectTo: `${getSiteUrl()}/reset-password`,
+        captchaToken: captchaConfigured ? captchaToken ?? undefined : undefined,
       });
 
       if (error) {
         setError(error.message);
+        turnstileRef.current?.reset();
+        setCaptchaToken(null);
       } else {
         setMessage('Check your email for a password reset link.');
       }
     } catch (err: any) {
       setError(err.message || 'An error occurred. Please try again.');
+      turnstileRef.current?.reset();
+      setCaptchaToken(null);
     } finally {
       setLoading(false);
     }
@@ -77,9 +87,21 @@ export default function ForgotPasswordPage() {
             </div>
           </div>
 
+          {captchaConfigured && (
+            <div className="flex justify-center">
+              <Turnstile
+                ref={turnstileRef}
+                siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? ''}
+                onVerify={setCaptchaToken}
+                onError={setError}
+                action="password_reset"
+              />
+            </div>
+          )}
+
           <button
             type="submit"
-            disabled={loading || !!message}
+            disabled={loading || !!message || (captchaConfigured && !captchaToken)}
             className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-medium text-white hover:bg-primary/90 transition disabled:opacity-50 flex items-center justify-center gap-2 min-h-[44px]"
           >
             {loading && <Loader2 className="h-4 w-4 animate-spin" />}

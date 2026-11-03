@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Target, MessageSquare, FileText, Brain, Megaphone, Bot, BarChart3, Settings, LogOut, CheckSquare, User } from 'lucide-react';
+import { LayoutDashboard, Target, MessageSquare, FileText, Brain, Megaphone, Bot, BarChart3, Settings, LogOut, CheckSquare, User, ShieldAlert } from 'lucide-react';
 import { useSupabaseContext } from '@/providers/supabase-provider';
 
 const navigationSections = [
@@ -34,6 +34,7 @@ const navigationSections = [
     title: 'Account',
     items: [
       { href: '/settings', icon: Settings, label: 'Settings' },
+      { href: '/mfa', icon: ShieldAlert, label: 'Multi-factor Auth' },
       { href: '/profile', icon: User, label: 'Profile' },
     ]
   },

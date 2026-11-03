@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useSupabaseContext } from '@/providers/supabase-provider';
 import { 
   LayoutDashboard, Target, MessageSquare, FileText, Brain, Bot, 
-  BarChart3, Settings, LogOut, Menu, X, CheckSquare, Megaphone, User 
+  BarChart3, Settings, LogOut, Menu, X, CheckSquare, Megaphone, User, ShieldAlert 
 } from 'lucide-react';
 
 const navigationItems = [
@@ -19,6 +19,7 @@ const navigationItems = [
   { href: '/analytics', icon: BarChart3, label: 'Analytics' },
   { href: '/knowledge', icon: Brain, label: 'Business Brain' },
   { href: '/settings', icon: Settings, label: 'Settings' },
+  { href: '/mfa', icon: ShieldAlert, label: 'MFA' },
   { href: '/profile', icon: User, label: 'Profile' },
 ];
 
