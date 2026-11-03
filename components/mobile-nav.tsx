@@ -14,9 +14,12 @@ const navigationItems = [
   { href: '/leads', icon: Target, label: 'Leads' },
   { href: '/responses', icon: MessageSquare, label: 'Communications' },
   { href: '/documents', icon: FileText, label: 'Documents' },
-  { href: '/knowledge', icon: Brain, label: 'Business Brain' },
   { href: '/tasks', icon: CheckSquare, label: 'Follow-ups' },
+  { href: '/content', icon: Megaphone, label: 'Content Creation' },
+  { href: '/analytics', icon: BarChart3, label: 'Analytics' },
+  { href: '/knowledge', icon: Brain, label: 'Business Brain' },
   { href: '/settings', icon: Settings, label: 'Settings' },
+  { href: '/profile', icon: User, label: 'Profile' },
 ];
 
 export function MobileNav() {

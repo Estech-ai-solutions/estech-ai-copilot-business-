@@ -14,7 +14,7 @@ const navigationSections = [
     ]
   },
   {
-    title: 'Work',
+    title: 'Business',
     items: [
       { href: '/leads', icon: Target, label: 'Leads' },
       { href: '/responses', icon: MessageSquare, label: 'Communications' },
@@ -23,8 +23,10 @@ const navigationSections = [
     ]
   },
   {
-    title: 'Business',
+    title: 'Content & Intelligence',
     items: [
+      { href: '/content', icon: Megaphone, label: 'Content Creation' },
+      { href: '/analytics', icon: BarChart3, label: 'Analytics' },
       { href: '/knowledge', icon: Brain, label: 'Business Brain' },
     ]
   },
@@ -32,6 +34,7 @@ const navigationSections = [
     title: 'Account',
     items: [
       { href: '/settings', icon: Settings, label: 'Settings' },
+      { href: '/profile', icon: User, label: 'Profile' },
     ]
   },
 ];
