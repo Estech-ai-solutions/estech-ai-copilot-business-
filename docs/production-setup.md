@@ -17,13 +17,22 @@ access protected workspaces or customer data. Do not auto-confirm accounts to
 bypass SMTP.
 
 Public email/password **registration is currently disabled** because custom
-SMTP is not configured. Existing accounts can still sign in with email +
-password. New accounts must use a connected OAuth provider.
+SMTP is not configured (see section I). Existing accounts can still sign in
+with email + password. New accounts must use a connected OAuth provider.
+Password reset by email is **not** available until SMTP is configured.
 
-## B. Resend — transactional email delivery
+## B. Resend — transactional email delivery (future requirement)
 
-When custom SMTP is configured, Resend is the recommended transport. Supabase
-Auth generates and sends all authentication emails; Resend delivers them.
+Resend is the recommended SMTP transport. Supabase Auth generates and sends
+all authentication emails; Resend would deliver them once configured.
+
+**Resend SMTP is not currently configured.** A verified sending domain is
+unavailable, so email registration, email confirmation delivery, and password
+reset by email are **not** production-ready. Do not present them as working
+features until Resend SMTP has been configured in Supabase and tested
+end-to-end.
+
+When Resend is configured later:
 
 ### 1. Resend console
 1. Create a Resend account and verify a sending domain (recommended: a
@@ -59,23 +68,30 @@ for authentication emails.
 3. **Credentials > Create credentials > OAuth client ID**
    - Application type: Web application.
    - Name: Estech Business Copilot.
-4. **Authorized JavaScript origins:**
+4. **Authorized JavaScript origins** (application origins only, no paths):
    - `http://localhost:3000` (local development)
-   - `https://your-app-domain.com` (production)
-5. **Authorized redirect URIs:**
-   - `http://localhost:3000/auth/callback`
-   - `https://your-app-domain.com/auth/callback`
+   - `https://business.estech.dedyn.io` (production)
+5. **Authorized redirect URIs** (must contain the Supabase Auth callback):
+   - `https://YOUR_PROJECT_REF.supabase.co/auth/v1/callback`
 6. Record the **Client ID** and **Client Secret**.
 
 ### 2. Supabase OAuth configuration
 **Authentication > Providers > Google:**
 - Enable Google.
 - Enter the Client ID and Client Secret.
-- Redirect URL: `https://your-app-domain.com/auth/callback`
-  (use `http://localhost:3000/auth/callback` locally).
 
-### 3. Enable in the app
+### 3. Supabase URL configuration
+**Authentication > URL Configuration > Redirect URLs:** add the Estech
+application callback:
+- `https://business.estech.dedyn.io/auth/callback`
+- `http://localhost:3000/auth/callback` (local development)
+
+### 4. Enable in the app
 Set `NEXT_PUBLIC_ENABLE_GOOGLE_OAUTH="true"` in `.env`.
+
+The application's `signInWithOAuth()` call passes
+`redirectTo: <site-url>/auth/callback`, which is the Estech application
+callback (not the Supabase callback).
 
 Scopes: `openid email profile`.
 
@@ -87,17 +103,20 @@ Supabase provider identifier: `azure`.
 1. Create (or select) an Entra ID app registration.
 2. **Authentication:**
    - Add a platform: **Web**.
-   - Redirect URIs:
-     - `http://localhost:3000/auth/callback`
-     - `https://your-app-domain.com/auth/callback`
-   - Supported account types: choose "Accounts in this organizational directory"
-     for a single tenant, or "Accounts in any organizational directory ... and
-     personal Microsoft accounts" for multi-tenant.
+   - Redirect URIs (must contain the Supabase Auth callback):
+     - `https://YOUR_PROJECT_REF.supabase.co/auth/v1/callback`
+   - Supported account types:
+     - **`common`** — organizational and personal Microsoft accounts.
+     - **`consumers`** — personal Microsoft accounts only.
+     - **Specific tenant ID** — restricted to a single organizational tenant.
+     Use `common` or `consumers` unless you intend to restrict sign-in to one
+     specific organization. Do not enter a specific tenant ID for general
+     Microsoft account support.
 3. **Certificates & secrets > Client secrets:** create a secret and record its
    value (shown only once).
 4. **Overview:** record the **Application (client) ID** and **Directory (tenant)
    ID**.
-4. **API permissions > Add a permission > Microsoft Graph > Delegated:**
+5. **API permissions > Add a permission > Microsoft Graph > Delegated:**
    - `email`
    - `openid`
    - `profile`
@@ -108,12 +127,18 @@ Supabase provider identifier: `azure`.
 - Enable Azure.
 - Client ID: the Entra app Application ID.
 - Secret: the client secret value.
-- URL: `https://login.microsoftonline.com/{tenant-id}/v2.0`
-  (replace `{tenant-id}` with your Directory ID).
-- Redirect URL: `https://your-app-domain.com/auth/callback`
-  (use `http://localhost:3000/auth/callback` locally).
+- URL:
+  - `https://login.microsoftonline.com/common/v2.0` for org + personal accounts, or
+  - `https://login.microsoftonline.com/consumers/v2.0` for personal accounts only, or
+  - `https://login.microsoftonline.com/{tenant-id}/v2.0` for a single tenant.
 
-### 3. Enable in the app
+### 3. Supabase URL configuration
+**Authentication > URL Configuration > Redirect URLs:** add the Estech
+application callback:
+- `https://business.estech.dedyn.io/auth/callback`
+- `http://localhost:3000/auth/callback` (local development)
+
+### 4. Enable in the app
 Set `NEXT_PUBLIC_ENABLE_MICROSOFT_OAUTH="true"` in `.env`.
 
 Scopes: `openid email profile`.
@@ -123,40 +148,66 @@ Scopes: `openid email profile`.
 ### 1. GitHub OAuth App
 1. **Settings > Developer settings > OAuth Apps > New OAuth App.**
    - Application name: Estech Business Copilot.
-   - Homepage URL: `https://your-app-domain.com`.
-   - Authorization callback URL:
-     `https://your-app-domain.com/auth/callback`
-     (use `http://localhost:3000/auth/callback` locally).
+   - Homepage URL: `https://business.estech.dedyn.io` (or
+     `http://localhost:3000` locally).
+   - Authorization callback URL (must contain the Supabase Auth callback):
+     `https://YOUR_PROJECT_REF.supabase.co/auth/v1/callback`
 2. Record the **Client ID** and generate a **Client secret**.
 
 ### 2. Supabase OAuth configuration
 **Authentication > Providers > GitHub:**
 - Enable GitHub.
 - Enter the Client ID and Client Secret.
-- Redirect URL: `https://your-app-domain.com/auth/callback`
-  (use `http://localhost:3000/auth/callback` locally).
 
-### 3. Enable in the app
+### 3. Supabase URL configuration
+**Authentication > URL Configuration > Redirect URLs:** add the Estech
+application callback:
+- `https://business.estech.dedyn.io/auth/callback`
+- `http://localhost:3000/auth/callback` (local development)
+
+### 4. Enable in the app
 Set `NEXT_PUBLIC_ENABLE_GITHUB_OAUTH="true"` in `.env`.
 
 Scopes: `user:email read:user`.
 
-## F. Common OAuth callback requirements
+## F. OAuth callback flow — two URIs
 
-All providers redirect to `/auth/callback`. The allowed callback/redirect URL
-must be registered in both:
-- the provider console (Google Cloud, Microsoft Entra, GitHub), and
-- Supabase Auth > Providers (and, for some hosts, Settings > URL
-  configuration > Redirect URLs).
+Every OAuth sign-in involves **two different callback URIs**:
 
-Do not use wildcard redirect URLs in production. Session cookies are handled by
-Supabase SSR and persist across page refreshes.
+| URI | Purpose | Where configured | Example |
+|---|---|---|---|
+| Provider console callback URI | The OAuth provider redirects here after the user approves. This is the **Supabase Auth** endpoint, which exchanges the code and forwards the user to the app callback. | Provider console (Google Cloud, Microsoft Entra, GitHub) | `https://YOUR_PROJECT_REF.supabase.co/auth/v1/callback` |
+| Application redirect URI | After Supabase establishes the session, the browser is redirected here so the app can complete onboarding/dashboard routing. | Supabase Auth > URL Configuration > Redirect URLs **and** the app's `signInWithOAuth()` `redirectTo` option | `https://business.estech.dedyn.io/auth/callback` |
 
-## G. Cloudflare Turnstile CAPTCHA
+The application's `signInWithOAuth()` `redirectTo` must point to the Estech
+application callback (`/auth/callback`), not the Supabase callback.
 
-Supabase Auth has native CAPTCHA support. Turnstile protects sign-up, password
-login, and password recovery. The Secret Key is configured only in Supabase;
-the Site Key is public browser configuration.
+## G. Implementation verification
+
+- **`redirectTo`** (`components/auth/oauth-provider-button.tsx`): set to
+  `<site-url>/auth/callback`, i.e. the Estech application callback.
+- **Code exchange** (`app/auth/callback/page.tsx`): the page reads `?code=`
+  from the current window location and calls
+  `supabase.auth.exchangeCodeForSession(code)` to establish the session.
+- **Redirect destination**: `redirectTo` is derived from
+  `getSiteUrl()` (the `NEXT_PUBLIC_SITE_URL` env var or `window.location.origin`),
+  not from user-supplied input, so it is not an open-redirect vector through the
+  button. The callback page does not accept a user-controlled `redirectTo`
+  parameter.
+- **Session persistence**: after `exchangeCodeForSession`, Supabase SSR cookies
+  are set and the session persists across page refreshes and redirects. The
+  callback page redirects to `/onboarding` (first-time users) or `/dashboard`
+  (returning users).
+
+## H. Cloudflare Turnstile CAPTCHA
+
+Supabase Auth has native CAPTCHA support. Turnstile protects **only** the
+password-based flows that Supabase exposes: sign-up, password login, and
+password recovery.
+
+**OAuth sign-in flows (Google, Microsoft, GitHub) are NOT protected by
+Turnstile.** They are handled by the provider's own consent screen and
+Supabase's OAuth exchange. Do not claim OAuth flows are CAPTCHA-protected.
 
 ### 1. Cloudflare dashboard
 1. Add a site to Cloudflare Turnstile (Managed mode).
@@ -171,7 +222,7 @@ the Site Key is public browser configuration.
 ### 3. Enable in the app
 Set `NEXT_PUBLIC_TURNSTILE_SITE_KEY` in `.env`.
 
-## H. Guest demo mode
+## I. Guest demo mode
 
 The demo (`/demo`) is a **read-only, synthetic-data experience**. It does not
 call Supabase for reads or writes, never exposes real tenant records, and
@@ -183,7 +234,7 @@ demonstration users cannot create, modify, or delete anything.
 - Buttons route visitors to sign in or create a permanent account.
 - Enable/disable with `NEXT_PUBLIC_ENABLE_GUEST_DEMO` (default `true`).
 
-## I. TOTP Multi-Factor Authentication (MFA)
+## J. TOTP Multi-Factor Authentication (MFA)
 
 MFA uses Supabase's native MFA APIs — no external credentials required.
 
@@ -192,7 +243,7 @@ MFA uses Supabase's native MFA APIs — no external credentials required.
 - Users can view enrolled factors and remove them.
 - MFA is optional initially; recommended for workspace administrators.
 
-## J. Environment variables
+## K. Environment variables
 
 See `.env.example` for placeholder names. Secrets are entered in provider
 consoles and Supabase dashboards — never stored in `.env`.
@@ -201,19 +252,20 @@ consoles and Supabase dashboards — never stored in `.env`.
 |---|---|---|
 | NEXT_PUBLIC_SUPABASE_URL | Supabase dashboard | required |
 | NEXT_PUBLIC_SUPABASE_ANON_KEY | Supabase dashboard | required |
+| NEXT_PUBLIC_SITE_URL | .env / provider redirect | Estech application origin, no path |
 | NEXT_PUBLIC_ENABLE_GOOGLE_OAUTH | .env | feature flag, default false |
 | NEXT_PUBLIC_ENABLE_MICROSOFT_OAUTH | .env | feature flag, default false |
 | NEXT_PUBLIC_ENABLE_GITHUB_OAUTH | .env | feature flag, default false |
 | NEXT_PUBLIC_ENABLE_GUEST_DEMO | .env | feature flag, default true |
 | NEXT_PUBLIC_TURNSTILE_SITE_KEY | .env | public site key only |
 | NEXT_PUBLIC_SENTRY_DSN | .env | optional monitoring |
-| Resend SMTP password | Supabase dashboard SMTP | secret |
+| Resend SMTP password | Supabase dashboard SMTP | secret (not configured) |
 | Google Client ID / Secret | Supabase Auth providers | secret |
 | Microsoft Client ID / Secret | Supabase Auth providers | secret |
 | GitHub Client ID / Secret | Supabase Auth providers | secret |
 | Turnstile Secret Key | Supabase Auth CAPTCHA | secret |
 
-## K. Classification of current state
+## L. Classification of current state
 
 - **Code implemented and tested:** OAuth provider buttons (Google/Microsoft/
   GitHub) with feature flags, email/password login for existing accounts,
@@ -221,10 +273,11 @@ consoles and Supabase dashboards — never stored in `.env`.
   OAuth callback route, session persistence, RLS, security headers, health
   endpoint, MFA settings page, mocked provider and demo unit tests, lint.
 - **Configuration prepared but awaiting credentials:** Google, Microsoft, GitHub
-  OAuth clients; Resend SMTP; Turnstile keys; Sentry DSN.
-- **Configuration completed but awaiting real-world verification:** OAuth
-  flows, email delivery, and CAPTCHA enforcement require credentialed
-  end-to-end tests against configured providers.
+  OAuth clients; Turnstile keys; Sentry DSN.
+- **Not configured / not production-ready:** Resend SMTP (no verified sending
+  domain — email registration, confirmation delivery, and password reset are
+  unavailable). OAuth flows require credentialed end-to-end tests against
+  configured providers.
 - **Features remaining incomplete:** distributed rate limiting (requires a
   shared store such as Redis/KV), automated browser-level integration tests
   against a dedicated test Supabase instance.
