@@ -9,7 +9,12 @@ import {
 } from 'lucide-react';
 import { Turnstile } from '@/components/auth/turnstile';
 import { OAuthProviderButton } from '@/components/auth/oauth-provider-button';
-import { getOAuthProviderConfigs, getSiteUrl, isCaptchaConfigured, isGuestDemoEnabled } from '@/lib/auth-helpers';
+import {
+  getOAuthProviderConfigs,
+  getSiteUrl,
+  isCaptchaConfigured,
+  isGuestDemoEnabled,
+} from '@/lib/auth-helpers';
 function classifyAuthError(message: string): string {
   const normalized = message.toLowerCase();
 
@@ -58,9 +63,19 @@ export default function LoginPage() {
   const [resendMessage, setResendMessage] = useState<string | null>(null);
   const turnstileRef = useRef<any>(null);
   const router = useRouter();
-  const captchaConfigured = isCaptchaConfigured();
-  const providers = getOAuthProviderConfigs();
-  const guestDemoEnabled = isGuestDemoEnabled();
+  // Env-dependent UI is initialized to a server-safe value and populated
+  // after mount so server HTML and initial client hydration match exactly.
+  const [providers, setProviders] = useState<ReturnType<typeof getOAuthProviderConfigs>>(
+    [],
+  );
+  const [captchaConfigured, setCaptchaConfigured] = useState(false);
+  const [guestDemoEnabled, setGuestDemoEnabled] = useState(false);
+
+  useEffect(() => {
+    setProviders(getOAuthProviderConfigs());
+    setCaptchaConfigured(isCaptchaConfigured());
+    setGuestDemoEnabled(isGuestDemoEnabled());
+  }, []);
 
   const handleOAuthStart = () => {
     setError(null);

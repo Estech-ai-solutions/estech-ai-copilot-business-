@@ -1,12 +1,19 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Bot, ArrowLeft } from 'lucide-react';
 import { getOAuthProviderConfigs } from '@/lib/auth-helpers';
 import { OAuthProviderButton } from '@/components/auth/oauth-provider-button';
 
 export default function RegisterPage() {
-  const providers = getOAuthProviderConfigs();
+  const [providers, setProviders] = useState<ReturnType<typeof getOAuthProviderConfigs>>(
+    [],
+  );
+
+  useEffect(() => {
+    setProviders(getOAuthProviderConfigs());
+  }, []);
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
