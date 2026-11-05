@@ -1,60 +1,12 @@
 'use client';
 
-import { useState, useRef } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
-import {
-  Bot, Mail, Lock, User, ArrowLeft, AlertCircle, Loader2,
-} from 'lucide-react';
-import { Turnstile } from '@/components/auth/turnstile';
-import { GoogleOAuthButton } from '@/components/auth/google-oauth-button';
-import { isCaptchaConfigured } from '@/lib/auth-helpers';
+import { Bot, ArrowLeft } from 'lucide-react';
+import { getOAuthProviderConfigs } from '@/lib/auth-helpers';
+import { OAuthProviderButton } from '@/components/auth/oauth-provider-button';
 
 export default function RegisterPage() {
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
-  const turnstileRef = useRef<any>(null);
-  const router = useRouter();
-  const captchaConfigured = isCaptchaConfigured();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    setMessage(null);
-
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { full_name: fullName },
-          captchaToken: captchaConfigured ? captchaToken ?? undefined : undefined,
-        },
-      });
-
-      if (error) {
-        setError(error.message);
-        turnstileRef.current?.reset();
-        setCaptchaToken(null);
-      } else if (data.user) {
-        setMessage('Account created! Redirecting to setup...');
-        setTimeout(() => router.push('/onboarding'), 1500);
-      }
-    } catch (err: any) {
-      setError(err.message || 'Registration failed');
-      turnstileRef.current?.reset();
-      setCaptchaToken(null);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const providers = getOAuthProviderConfigs();
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
@@ -65,110 +17,46 @@ export default function RegisterPage() {
         </Link>
 
         <div className="text-center">
-          <h1 className="text-2xl font-semibold text-text-heading">Create your account</h1>
-          <p className="text-sm text-text-muted mt-1">Start building with AI-powered tools</p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="flex items-center gap-2 rounded-xl bg-danger/10 border border-danger/20 px-4 py-3">
-              <AlertCircle className="h-4 w-4 text-danger" />
-              <span className="text-sm text-danger">{error}</span>
-            </div>
-          )}
-
-          {message && (
-            <div className="flex items-center gap-2 rounded-xl bg-success/10 border border-success/20 px-4 py-3">
-              <span className="text-sm text-success">{message}</span>
-            </div>
-          )}
-
-          <div>
-            <label className="block text-xs font-medium text-text-heading mb-2">Full Name</label>
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
-              <input
-                type="text"
-                value={fullName}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFullName(e.target.value)}
-                placeholder="Jane Doe"
-                required
-                disabled={loading}
-                className="w-full pl-10 rounded-xl border border-border/60 bg-background-secondary/60 px-4 py-3 text-sm text-text-heading placeholder:text-text-muted outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-text-heading mb-2">Email</label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
-              <input
-                type="email"
-                value={email}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                required
-                disabled={loading}
-                className="w-full pl-10 rounded-xl border border-border/60 bg-background-secondary/60 px-4 py-3 text-sm text-text-heading placeholder:text-text-muted outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-text-heading mb-2">Password</label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
-              <input
-                type="password"
-                value={password}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
-                placeholder="Minimum 6 characters"
-                required
-                minLength={6}
-                disabled={loading}
-                className="w-full pl-10 rounded-xl border border-border/60 bg-background-secondary/60 px-4 py-3 text-sm text-text-heading placeholder:text-text-muted outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-          </div>
-
-          {captchaConfigured && (
-            <div className="flex justify-center">
-              <Turnstile
-                ref={turnstileRef}
-                siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? ''}
-                onVerify={setCaptchaToken}
-                onError={setError}
-                action="signup"
-              />
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading || (captchaConfigured && !captchaToken)}
-            className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-medium text-white hover:bg-primary/90 transition disabled:opacity-50 flex items-center justify-center gap-2 min-h-[44px]"
-          >
-            {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-            Create account
-          </button>
-        </form>
-
-        <div className="border-t border-border/40 pt-4 space-y-3 text-center">
-          <div className="relative flex items-center justify-center">
-            <div className="flex-1 border-t border-border/40" />
-            <span className="mx-2 text-xs text-text-muted">Or continue with</span>
-            <div className="flex-1 border-t border-border/40" />
-          </div>
-          <GoogleOAuthButton className="w-auto mx-auto" />
-
-          <p className="text-sm text-text-muted text-center">
-            Already have an account?{' '}
-            <Link href="/login" className="text-primary hover:underline">
-              Sign in
-            </Link>
+          <h1 className="text-2xl font-semibold text-text-heading">Account creation</h1>
+          <p className="text-sm text-text-muted mt-1">
+            Public email and password registration is currently disabled while
+            email delivery is being configured.
           </p>
         </div>
+
+        <div className="rounded-xl border border-border/40 bg-background-secondary/60 p-5">
+          <h3 className="text-base font-medium text-text-heading mb-3">Sign in instead</h3>
+          <p className="text-sm text-text-muted mb-4">
+            If you already have an account, sign in with your email and password or a connected account below.
+          </p>
+
+          <div className="space-y-2">
+            {providers.map((p) => (
+              <OAuthProviderButton
+                key={p.id}
+                id={p.id}
+                label={p.label}
+                scopes={p.scopes}
+                iconColor={p.iconColor}
+              />
+            ))}
+          </div>
+
+          <div className="border-t border-border/40 pt-4 space-y-1 text-center">
+            <Link
+              href="/login"
+              className="w-full rounded-xl border border-border/40 bg-background-secondary/60 px-4 py-3 text-sm font-medium text-text-heading hover:bg-surface/60 transition text-center"
+            >
+              Go to sign in
+            </Link>
+          </div>
+        </div>
+
+        <p className="text-xs text-text-muted text-center">
+          New accounts can be created using a connected account (Google, Microsoft, or GitHub) once the
+          corresponding provider is enabled. Email confirmation is required before signing in with a
+          password.
+        </p>
 
         <Link href="/" className="flex items-center justify-center gap-2 text-sm text-text-muted hover:text-text-heading transition">
           <ArrowLeft className="h-4 w-4" />

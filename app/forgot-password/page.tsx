@@ -1,49 +1,9 @@
 'use client';
 
-import { useState, useRef } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
-import { Bot, Mail, ArrowLeft, CheckCircle, Loader2 } from 'lucide-react';
-import { Turnstile } from '@/components/auth/turnstile';
-import { getSiteUrl, isCaptchaConfigured } from '@/lib/auth-helpers';
+import { Bot, ArrowLeft, AlertTriangle } from 'lucide-react';
 
 export default function ForgotPasswordPage() {
-  const [email, setEmail] = useState('');
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const turnstileRef = useRef<any>(null);
-  const captchaConfigured = isCaptchaConfigured();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage(null);
-    setError(null);
-
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${getSiteUrl()}/reset-password`,
-        captchaToken: captchaConfigured ? captchaToken ?? undefined : undefined,
-      });
-
-      if (error) {
-        setError(error.message);
-        turnstileRef.current?.reset();
-        setCaptchaToken(null);
-      } else {
-        setMessage('Check your email for a password reset link.');
-      }
-    } catch (err: any) {
-      setError(err.message || 'An error occurred. Please try again.');
-      turnstileRef.current?.reset();
-      setCaptchaToken(null);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="w-full max-w-sm space-y-6">
@@ -53,65 +13,44 @@ export default function ForgotPasswordPage() {
         </Link>
 
         <div className="text-center">
-          <h1 className="text-2xl font-semibold text-text-heading">Reset password</h1>
-          <p className="text-sm text-text-muted mt-1">We&apos;ll email you a reset link</p>
+          <h1 className="text-2xl font-semibold text-text-heading">Password reset</h1>
+          <p className="text-sm text-text-muted mt-1">
+            Email delivery is not currently configured.
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="flex items-center gap-2 rounded-xl bg-danger/10 border border-danger/20 px-4 py-3">
-              <span className="text-sm text-danger">{error}</span>
-            </div>
-          )}
-
-          {message && (
-            <div className="flex items-center gap-2 rounded-xl bg-success/10 border border-success/20 px-4 py-3">
-              <CheckCircle className="h-4 w-4 text-success" />
-              <span className="text-sm text-success">{message}</span>
-            </div>
-          )}
-
-          <div>
-            <label className="block text-xs font-medium text-text-heading mb-2">Email</label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
-              <input
-                type="email"
-                value={email}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                required
-                disabled={loading || !!message}
-                className="w-full pl-10 rounded-xl border border-border/60 bg-background-secondary/60 px-4 py-3 text-sm text-text-heading placeholder:text-text-muted outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
-              />
+        <div className="rounded-xl border border-border/40 bg-background-secondary/60 p-5">
+          <div className="flex items-start gap-3 mb-4">
+            <AlertTriangle className="h-5 w-5 text-warning mt-0.5" />
+            <div>
+              <h3 className="text-base font-medium text-text-heading">
+                Password reset by email is unavailable
+              </h3>
+              <p className="text-sm text-text-muted">
+                Estech cannot send password-reset emails until custom SMTP (for example Resend) is
+                configured. Please use one of the sign-in options below instead.
+              </p>
             </div>
           </div>
 
-          {captchaConfigured && (
-            <div className="flex justify-center">
-              <Turnstile
-                ref={turnstileRef}
-                siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? ''}
-                onVerify={setCaptchaToken}
-                onError={setError}
-                action="password_reset"
-              />
-            </div>
-          )}
+          <div className="space-y-2">
+            <Link
+              href="/login"
+              className="w-full rounded-xl border border-border/40 bg-background-secondary/60 px-4 py-3 text-sm font-medium text-text-heading hover:bg-surface/60 transition text-center"
+            >
+              Go to sign in
+            </Link>
+          </div>
+        </div>
 
-          <button
-            type="submit"
-            disabled={loading || !!message || (captchaConfigured && !captchaToken)}
-            className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-medium text-white hover:bg-primary/90 transition disabled:opacity-50 flex items-center justify-center gap-2 min-h-[44px]"
-          >
-            {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-            Send reset link
-          </button>
-        </form>
+        <p className="text-xs text-text-muted text-center">
+          Once email delivery is configured, a password-reset link will be available here. Until then,
+          please sign in with your connected account or contact your workspace administrator.
+        </p>
 
-        <Link href="/login" className="flex items-center justify-center gap-2 text-sm text-text-muted hover:text-text-heading transition">
+        <Link href="/" className="flex items-center justify-center gap-2 text-sm text-text-muted hover:text-text-heading transition">
           <ArrowLeft className="h-4 w-4" />
-          Back to sign in
+          Back to home
         </Link>
       </div>
     </div>
