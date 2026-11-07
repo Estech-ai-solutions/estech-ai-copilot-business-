@@ -3,7 +3,7 @@ export function getSiteUrl(): string {
     return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '');
   }
   if (typeof window !== 'undefined' && window.location.origin) {
-    return window.location.origin;
+    return window.location.origin.replace(/\/$/, '');
   }
   return '';
 }
@@ -21,27 +21,37 @@ export function isCaptchaConfigured(): boolean {
 
 type OAuthProvider = 'google' | 'microsoft' | 'github';
 
-const PROVIDER_FLAG_MAP: Record<OAuthProvider, string> = {
-  google: 'NEXT_PUBLIC_ENABLE_GOOGLE_OAUTH',
-  microsoft: 'NEXT_PUBLIC_ENABLE_MICROSOFT_OAUTH',
-  github: 'NEXT_PUBLIC_ENABLE_GITHUB_OAUTH',
-};
-
+// Direct literal access so Next.js can statically replace
+// process.env.NEXT_PUBLIC_* with the configured value at build time.
+// Do NOT use bracket notation (process.env[flag]) here: it cannot be
+// replaced at build time and would require runtime `process`.
 export function isOAuthProviderEnabled(provider: OAuthProvider): boolean {
-  if (typeof process === 'undefined' || !process.env) {
-    return false;
+  if (provider === 'google') {
+    return (
+      process.env.NEXT_PUBLIC_ENABLE_GOOGLE_OAUTH === 'true' ||
+      process.env.NEXT_PUBLIC_ENABLE_GOOGLE_OAUTH === '1'
+    );
   }
-  const flag = PROVIDER_FLAG_MAP[provider];
-  const value = process.env[flag];
-  return value === 'true' || value === '1';
+  if (provider === 'microsoft') {
+    return (
+      process.env.NEXT_PUBLIC_ENABLE_MICROSOFT_OAUTH === 'true' ||
+      process.env.NEXT_PUBLIC_ENABLE_MICROSOFT_OAUTH === '1'
+    );
+  }
+  if (provider === 'github') {
+    return (
+      process.env.NEXT_PUBLIC_ENABLE_GITHUB_OAUTH === 'true' ||
+      process.env.NEXT_PUBLIC_ENABLE_GITHUB_OAUTH === '1'
+    );
+  }
+  return false;
 }
 
 export function isGuestDemoEnabled(): boolean {
-  if (typeof process === 'undefined' || !process.env) {
-    return false;
-  }
-  const value = process.env.NEXT_PUBLIC_ENABLE_GUEST_DEMO;
-  return value === 'true' || value === '1';
+  return (
+    process.env.NEXT_PUBLIC_ENABLE_GUEST_DEMO === 'true' ||
+    process.env.NEXT_PUBLIC_ENABLE_GUEST_DEMO === '1'
+  );
 }
 
 export interface OAuthProviderConfig {
